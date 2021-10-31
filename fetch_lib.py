@@ -20,7 +20,7 @@ class BasicInstrBlock:
 
 class InstrCache(sim.Component):
     """docstring for InstrCache"""
-    def setup(self, program, env1, rob):
+    def setup(self, program, env1, rob, int_queue, h_queue):
         self.program = program
         self.bb_dict = {}
         self.first_block = 'END'
@@ -30,6 +30,8 @@ class InstrCache(sim.Component):
         self.branch_taken = False
         self.rob = rob
         self.take_branch = False
+        self.int_queue = int_queue
+        self.h_queue = h_queue
 
     def read_program(self):
         with sim.ItemFile('../programs/'+self.program) as f:
@@ -56,7 +58,7 @@ class InstrCache(sim.Component):
                             else:
                                 instr_buf = instr_buf + ' ' + read_item
                             read_item = f.read_item()
-                        self.bb_dict[bb_name].add_instr(instr)
+                        self.bb_dict[bb_name].add_instr(instr_buf)
                         instr_count = instr_count + 1
                 except EOFError:
                     break
@@ -73,7 +75,7 @@ class InstrCache(sim.Component):
         return self.first_block
 
     def send_instr(self, bb_name, offset):
-        instr.Instr(fetch_unit=self, instr=self.bb_dict[bb_name].instr[offset])
+        instr.Instr(fetch_unit=self, instruction=self.bb_dict[bb_name].instr[offset], int_queue=self.int_queue, h_queue=self.h_queue)
         self.rob.add_instr()
         return self.bb_dict[bb_name].instr[offset]
 
