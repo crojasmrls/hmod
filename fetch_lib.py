@@ -1,5 +1,6 @@
 import salabim as sim
 import instr_lib as instr
+# from watchpoints import watch
 
 
 class BasicInstrBlock:
@@ -20,18 +21,18 @@ class BasicInstrBlock:
 
 class InstrCache(sim.Component):
     """docstring for InstrCache"""
-    def setup(self, program, env1, rob, int_queue, h_queue):
+    def setup(self, program, rob, pe):
         self.program = program
         self.bb_dict = {}
         self.first_block = 'END'
         self.offset = 0
         self.bb_name = 'main'
-        self.env = env1
         self.branch_taken = False
         self.rob = rob
         self.take_branch = False
-        self.int_queue = int_queue
-        self.h_queue = h_queue
+        self.fetch_resource = sim.Resource('fetch_resource', capacity=2)
+        # watch(self.fetch_resource.claimed_quantity.value)
+        self.pe = pe
 
     def read_program(self):
         with sim.ItemFile('../programs/'+self.program) as f:
@@ -75,7 +76,7 @@ class InstrCache(sim.Component):
         return self.first_block
 
     def send_instr(self, bb_name, offset):
-        instr.Instr(fetch_unit=self, instruction=self.bb_dict[bb_name].instr[offset], int_queue=self.int_queue, h_queue=self.h_queue)
+        instr.Instr(fetch_unit=self, instruction=self.bb_dict[bb_name].instr[offset], pe=self.pe)
         self.rob.add_instr()
         return self.bb_dict[bb_name].instr[offset]
 
@@ -85,6 +86,7 @@ class InstrCache(sim.Component):
 
     def process(self):
         while self.bb_name != 'END' or self.rob.count_inst != 0:
+            yield self.request(self.fetch_resource)
             if not self.take_branch:
                 # self.offset = self.offset + 1
                 pass
@@ -93,6 +95,8 @@ class InstrCache(sim.Component):
             if self.bb_name == 'END':
                 break
             else:
+                yield self.wait(self.pe.decode_state)
+                yield self.request(self.pe.Rob.rob_resource)
                 self.next_inst = self.send_instr(self.bb_name, self.offset)
             if self.offset == len(self.bb_dict[self.bb_name].instr) - 1:
 
@@ -104,18 +108,4 @@ class InstrCache(sim.Component):
                     self.bb_name = self.bb_dict[self.bb_name].next_block
             else:
                 self.offset = self.offset + 1
-            yield self.hold(1)
-
-
-# class fetch_requestor(sim.Component):
-#     def proccess(self):
-#         request=Icache_request()
-#         print(request.instr)
-#         yield self.passivate
-
-
-# class request(sim.Component):
-#     def __init__(self, arg):
-#         super(request, self).__init__()
-#         self.arg = arg
-#
+            # yield self.hold(1)
