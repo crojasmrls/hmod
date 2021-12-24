@@ -13,6 +13,7 @@ class PE(sim.Component):
         self.program = program
         self.decode_state = sim.State("decode_ready", value=True)
         self.int_units = sim.Resource('int_units', capacity=3)
+        self.int_queue = sim.Resource('int_queue', capacity=16)
         self.h_units = sim.Resource('h_units', capacity=1)
         self.register_file = rf.RegFile(physical_registers=self.physical_registers)
         self.Rob = rob.ReorderBuffer(rob_entries=self.rob_entries)
