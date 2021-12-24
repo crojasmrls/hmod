@@ -75,14 +75,16 @@ class InstrCache(sim.Component):
     def send_first_bb(self):
         return self.first_block
 
-    def send_instr(self, bb_name, offset):
-        instr.Instr(fetch_unit=self, instruction=self.bb_dict[bb_name].instr[offset], pe=self.pe)
-        self.rob.add_instr()
-        return self.bb_dict[bb_name].instr[offset]
+    def create_instr(self, bb_name, offset):
+        new_instr = instr.Instr(fetch_unit=self, instruction=self.bb_dict[bb_name].instr[offset], pe=self.pe)
+        self.next_inst = self.bb_dict[bb_name].instr[offset]
+        yield from self.rob.add_instr(new_instr)
+
+        # return self.bb_dict[bb_name].instr[offset]
 
     def change_pc(self, bb_name_branch):
         self.branch_taken = True
-        self.next_inst = self.send_instr(bb_name_branch, 0)
+        yield from self.create_instr(self.bb_name, self.offset)
 
     def process(self):
         while self.bb_name != 'END' or self.rob.count_inst != 0:
@@ -96,8 +98,9 @@ class InstrCache(sim.Component):
                 break
             else:
                 yield self.wait(self.pe.decode_state)
-                yield self.request(self.pe.Rob.rob_resource)
-                self.next_inst = self.send_instr(self.bb_name, self.offset)
+                # yield self.request(self.pe.Rob.rob_resource)
+                yield from self.create_instr(self.bb_name, self.offset)
+                # self.next_inst = self.send_instr(self.bb_name, self.offset)
             if self.offset == len(self.bb_dict[self.bb_name].instr) - 1:
 
                 self.bb_name = self.bb_dict[self.bb_name].next_block
