@@ -21,5 +21,6 @@ class ReorderBuffer(sim.Component):
         self.rob_queue.add(instruction)
 
     def process(self):
-        while True:
-            self.hold(1)
+        # while True:
+        #    self.hold(1)
+        self.hold(1)
