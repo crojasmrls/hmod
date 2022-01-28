@@ -95,26 +95,28 @@ class Instr(sim.Component):
 
     def set_fields(self):
         # This determines if it is an object creation or a new instruction.
-        if self.instruction.split()[0] == 'new':
-            for obj in HilarObjects.objects:
-                if self.instruction.split()[1] == obj:
-                    self.type = 'HILAR'
-            for obj in IntObjects.objects:
-                if self.instruction.split()[1] == obj:
-                    self.type = 'INT'
-        if self.instruction.split()[0] == 'call':
-            self.type = 'CALL'
-        else:
-            for hilar_method in HilarMethods.methods:
-                if self.instruction.split()[0] == hilar_method:
-                    self.type = 'HILAR'
-            for int_instr in IntegerISA.instrs:
-                if self.instruction.split()[0] == int_instr:
-                    self.type = 'INT'
-                    self.set_sources()
-                    for int_instr_dest in HasSrc1.instrs:
-                        if self.instruction.split()[0] == int_instr_dest:
-                            self.has_dest = True
+        # if self.instruction.split()[0] == 'new':
+        #     for obj in HilarObjects.objects:
+        #         if self.instruction.split()[1] == obj:
+        #             self.type = 'HILAR'
+        #     for obj in IntObjects.objects:
+        #         if self.instruction.split()[1] == obj:
+        #             self.type = 'INT'
+        # if self.instruction.split()[0] == 'call':
+        #     self.type = 'CALL'
+        # else:
+        #     for hilar_method in HilarMethods.methods:
+        #         if self.instruction.split()[0] == hilar_method:
+        #             self.type = 'HILAR'
+        #     for int_instr in IntegerISA.instrs:
+        #         if self.instruction.split()[0] == int_instr:
+        #             self.type = 'INT'
+        #             self.set_sources()
+        #             for int_instr_dest in HasSrc1.instrs:
+        #                 if self.instruction.split()[0] == int_instr_dest:
+        #                     self.has_dest = True
+        # Change for loops by hash table with the decoded intrs
+        ints_touple = IntRegisterTable[self.instruction.split()[0]]
 
 
 # List of objects that will be executed by the HILAR queue
@@ -162,7 +164,6 @@ class ALUCode(Enum):
     SUB = 2
     MULT = 3
 
-class Type
 
 class Insrtruction_Table: # (Instruction label, n_sources, n_dests, alu_op label)
     Instructions ={'add': (InstLabel.INT, 2, 1, ALUCode.ADD),
