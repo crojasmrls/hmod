@@ -116,7 +116,9 @@ class Instr(sim.Component):
         #                 if self.instruction.split()[0] == int_instr_dest:
         #                     self.has_dest = True
         # Change for loops by hash table with the decoded intrs
-        ints_touple = IntRegisterTable[self.instruction.split()[0]]
+
+        # ints_touple = IntRegisterTable[self.instruction.split(' ')[1].split(',')[0]]
+       ints_touple = IntRegisterTable.registers[self.instruction.split(' ')[1].split(',')[0]]
 
 
 # List of objects that will be executed by the HILAR queue
