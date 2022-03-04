@@ -21,18 +21,17 @@ class BasicInstrBlock:
 
 class InstrCache(sim.Component):
     """docstring for InstrCache"""
-    def setup(self, program, rob, pe):
+    def setup(self, program, resources):
         self.program = program
         self.bb_dict = {}
         self.first_block = 'END'
         self.offset = 0
         self.bb_name = 'main'
         self.branch_taken = False
-        self.rob = rob
         self.take_branch = False
-        self.fetch_resource = sim.Resource('fetch_resource', capacity=2)
+        self.resources = resources
+        #self.fetch_resource = self.resources.fetch_resource
         # watch(self.fetch_resource.claimed_quantity.value)
-        self.pe = pe
 
     def read_program(self):
         with sim.ItemFile('../programs/'+self.program) as f:
@@ -76,9 +75,9 @@ class InstrCache(sim.Component):
         return self.first_block
 
     def create_instr(self, bb_name, offset):
-        new_instr = instr.Instr(fetch_unit=self, instruction=self.bb_dict[bb_name].instr[offset], pe=self.pe)
+        new_instr = instr.Instr(instruction=self.bb_dict[bb_name].instr[offset], resources=self.resources, fetch_unit=self)
         self.next_inst = self.bb_dict[bb_name].instr[offset]
-        yield from self.rob.add_instr(new_instr)
+        yield from self.resources.RobInst.add_instr(new_instr)
 
         # return self.bb_dict[bb_name].instr[offset]
 
@@ -87,8 +86,8 @@ class InstrCache(sim.Component):
         yield from self.create_instr(self.bb_name, self.offset)
 
     def process(self):
-        while self.bb_name != 'END' or self.rob.count_inst != 0:
-            yield self.request(self.fetch_resource)
+        while self.bb_name != 'END' or self.resources.RobInst.count_inst != 0:
+            yield self.resources.request(self.resources.fetch_resource)
             if not self.take_branch:
                 # self.offset = self.offset + 1
                 pass
@@ -97,8 +96,7 @@ class InstrCache(sim.Component):
             if self.bb_name == 'END':
                 break
             else:
-                yield self.wait(self.pe.decode_state)
-                # yield self.request(self.pe.Rob.rob_resource)
+                yield self.wait(self.resources.decode_state)
                 yield from self.create_instr(self.bb_name, self.offset)
                 # self.next_inst = self.send_instr(self.bb_name, self.offset)
             if self.offset == len(self.bb_dict[self.bb_name].instr) - 1:

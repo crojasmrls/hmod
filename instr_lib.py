@@ -1,148 +1,104 @@
 import salabim as sim
-from enum import Enum
+from enum import IntEnum, Enum, auto
+
+from reg_file_lib import PhysicalRegister
 
 
 class Instr(sim.Component):
-    def setup(self, pe, instruction, fetch_unit):
-        self.fetch_unit = fetch_unit
-        self.type = 'none'
+    def setup(self, instruction, resources, fetch_unit):
+        # Instruction String
         self.instruction = instruction
-        self.miss_branch_prediction = False
-        self.pe = pe
-        self.correct_bb_name = ''
-        self.has_dest = False
-        self.has_Src1 = False
-        self.has_Src2 = False
-        self.Physical_register = self.pe.register_file.get_reg(0)
-        self.virtual_dest = 0
-        self.physical_dest = self.pe.register_file.rat[0]
-        self.sources = [self.pe.register_file.rat[0], self.pe.register_file.rat[0]]
-        self.pipelined=False
-        self.latency=1
-        self.set_fields ()
+        # Resources pointer
+        self.resources = resources
+        self.fetch_unit = fetch_unit
+        # Decoded Fields
+        self.sources = []
+        self.set_fields()
 
     def process(self):
         print(self.instruction)
         self.state = 'decode'
         yield self.hold(1)  # Decode
-        self.sources = self.set_sources()
-        self.fetch_unit.release((self.fetch_unit.fetch_resource, 1))
-        yield self.wait(self.pe.decode_state, urgent=True)
-        self.pe.decode_state.set(False)
-        if self.type == 'INT': # Put enum value
-            yield self.request(self.pe.int_queue)
+        # self.resources.fetch_resource.release()
+        self.release(self.resources.fetch_resource, 1)
+        yield self.wait(self.resources.decode_state, urgent=True)
+        self.resources.decode_state.set(False)
+        if self.instr_touple[INTFields.LABEL] == InstrLabel.INT:  # Put enum value
+            yield self.request(self.resources.int_queue)
         #   self.enter(self.int_queue)
-            if self.has_dest:
-                yield self.request(self.pe.reg_file.FRL_resource)
-                self.physical_dest = self.Physical_register(False)
-                self.old_dest = self.pe.reg_file.get_reg(self.virtual_reg)
-                self.pe.reg_file.set_reg(self.virtual_dest, self.physical_dest) 
+            # If there is destination a physical register is requested and created
+            if self.instr_touple[INTFields.DEST]:
+                yield self.request(self.resources.reg_file.FRL_resource)
+                self.p_dest = PhysicalRegister(state=False, value=self.dest)
+                self.p_old_dest = self.resources.reg_file.get_reg(self.dest)
+                self.resources.reg_file.set_reg(self.dest, self.p_dest)
 
-            self.pe.decode_state.set(True)
-            yield self.hold(1) # Hold for dispath stage
+            self.resources.decode_state.set(True)
+            yield self.hold(1)  # Hold for dispatch stage
             for x in self.sources:
-                yield self.wait(x.reg_state)
-            yield self.request(self.pe.int_units,1)
-            self.execute()
-            self.release(self.pe.int_queue,1)
-            if self.pipelined:
+                yield self.wait(self.resources.reg_file.get_reg(x).reg_state)
+            yield self.request(self.resources.int_units, 1)
+            self.release(self.resources.int_queue, 1)
+            if self.instr_touple[INTFields.PIPELINED]:  # If operation is pipelined
                 yield self.hold(1)
-                self.release(self.pe.int_units,1)
-                yield self.hold(self.latency-1)
-                self.physical_dest.reg_state.set(True)
+                self.release(self.resources.int_units, 1)
+                yield self.hold(self.instr_touple[INTFields.LATENCY]-1)  # Latency - 1
+                self.p_dest.reg_state.set(True)
             else:
-                yield self.hold(self.latency)
-                self.physical_dest.reg_state.set(True)
-                self.release(self.pe.int_units,1)
+                yield self.hold(self.instr_touple[INTFields.LATENCY])
+                self.p_dest.reg_state.set(True)
+                self.release(self.resources.int_units, 1)
+            self.compute()
 
-            yield from self.pe.Rob.instr_end(self)
+            yield from self.resources.RobInst.instr_end(self)
 
-
-
-
-        elif self.type == 'HILAR':
-            # self.enter(self.h_queue)
-            yield self.request(self.pe.h_units)
-            self.pe.decode_state.set(True)
-        self.state = 'enqued'
-        yield self.passivate()
-        if self.type == 'BRANCH' and self.miss_branch_prediction:
-            self.fetch_unit.change_pc(self.correct_bb_name)
+#        elif self.type == 'HILAR':
+#            # self.enter(self.h_queue)
+#            yield self.request(self.resources.h_units)
+#            self.resources.decode_state.set(True)
+#        self.state = 'enqued'
+#        yield self.passivate()
+#        if self.type == 'BRANCH' and self.miss_branch_prediction:
+            # self.fetch_unit.change_pc(self.correct_bb_name)
             # flush pipeline
             # elf.fetch_unit_
         # liberar la unidad
-        self.fetch_unit.rob.instr_end()
+        self.resources.RobInst.instr_end()
 
     def flush(self):
-        self.fetch_unit.rob.instr_end()
+        self.resources.RobInst.instr_end()
 
-    def set_sources(self):
-        x = self.instruction.split(",")
-        for int_instr in HasSrc1.instrs:
-            if self.instruction.split()[0] == int_instr:
-                y = x[0].split()[1]
-                register = IntRegisterTable.registers[y]
-                self.sources = [self.pe.register_file.rat[register]]
-        for int_instr in HasSrc2.instrs:
+    def compute(self):
+        if self.instr_touple[INTFields.ALU_CODE] == ALUCode.ADD:
+            self.p_dest.value = \
+                self.resources.reg_file.get_reg(self.sources[0]).value + \
+                self.resources.reg_file.get_reg(self.sources[0]).value
 
-            self.sources.append(self.pe.register_file.rat[register])
-
-
-    def execute(self):
-        pass
         # set the execution value
         # calculate the result
 
     def set_fields(self):
-        # This determines if it is an object creation or a new instruction.
-        # if self.instruction.split()[0] == 'new':
-        #     for obj in HilarObjects.objects:
-        #         if self.instruction.split()[1] == obj:
-        #             self.type = 'HILAR'
-        #     for obj in IntObjects.objects:
-        #         if self.instruction.split()[1] == obj:
-        #             self.type = 'INT'
-        # if self.instruction.split()[0] == 'call':
-        #     self.type = 'CALL'
-        # else:
-        #     for hilar_method in HilarMethods.methods:
-        #         if self.instruction.split()[0] == hilar_method:
-        #             self.type = 'HILAR'
-        #     for int_instr in IntegerISA.instrs:
-        #         if self.instruction.split()[0] == int_instr:
-        #             self.type = 'INT'
-        #             self.set_sources()
-        #             for int_instr_dest in HasSrc1.instrs:
-        #                 if self.instruction.split()[0] == int_instr_dest:
-        #                     self.has_dest = True
-        # Change for loops by hash table with the decoded intrs
-
-        # ints_touple = IntRegisterTable[self.instruction.split(' ')[1].split(',')[0]]
-       ints_touple = IntRegisterTable.registers[self.instruction.split(' ')[1].split(',')[0]]
-
-
-# List of objects that will be executed by the HILAR queue
-class HilarObjects:
-    objects = ['_b_node_']
-# List of objects that will be executed by the Integer Queue
-
-
-class IntObjects:
-    objects = ['_array_', '_int_', '_bool_', '_byte_']
-
-
-class IntegerISA:  # It also includes pseudo assembly
-    instrs = ['blt', 'bneq', 'j', 'assign', 'li', 'add', 'nop']
-
-class HasSrc1:  # All intructions that have destination
-    instrs = ['assign', 'li', 'add']
-
-class HasSrc2:  # All intructions that have destination
-    instrs = ['add']
-
-
-class HasDest:
-    instrs = ['']
+        parsed_instr = self.instruction.replace(',', ' ').split()
+        try:
+            self.instr_touple = InsrtructionTable.Instructions[parsed_instr.pop(0)]
+        except NameError:
+            print("NameError: Not supported instruction")
+        if self.instr_touple[INTFields.LABEL] == InstrLabel.INT:
+            if self.instr_touple[INTFields.DEST]:
+                try:
+                    self.dest = IntRegisterTable.registers[parsed_instr.pop(0)]
+                except NameError:
+                    print("NameError: Invalid destination register")
+            for x in range(self.instr_touple[INTFields.N_SOURCES]):
+                try:
+                    self.sources[x] = IntRegisterTable.registers[parsed_instr.pop(0)]
+                except NameError:
+                    print("NameError: Invalid source register")
+            if self.instr_touple[INTFields.IMEDIATE]:
+                try:
+                    self.imediate = int(parsed_instr.pop(0))
+                except NameError:
+                    print("NameError: Invalid imediate")
 
 
 class IntRegisterTable:  # Register map of the micro architecture
@@ -154,25 +110,50 @@ class IntRegisterTable:  # Register map of the micro architecture
                  's4': 20, 's5': 21, 's6': 22, 's7': 23,
                  's8': 24, 's9': 25, 's10': 26, 's11': 27,
                  't3': 28, 't4': 29, 't5': 30, 't6': 31}
-class InstLabel(Enum):
-    INT = 0
-    FP = 1
-    HILAR = 3
-    CALL = 4
+
+
+class InstrLabel(Enum):
+    INT = auto()
+    FP = auto()
+    HILAR = auto()
+    CALL = auto()
+
 
 class ALUCode(Enum):
-    OR = 0
-    ADD = 1
-    SUB = 2
-    MULT = 3
+    OR = auto()
+    ADD = auto()
+    SUB = auto()
+    MULT = auto()
 
 
-class Insrtruction_Table: # (Instruction label, n_sources, n_dests, alu_op label)
-    Instructions ={'add': (InstLabel.INT, 2, 1, ALUCode.ADD),
-                   'li': (InstLabel.INT,1,1,ALUCode.ADD),
-                   'nop': (InstLabel.INT,0,0,ALUCode.ADD),
-                   'new': (InstLabel.HILAR)
-                   }
+class INTFields(IntEnum):
+    LABEL = 0
+    DEST = 1
+    N_SOURCES = 2
+    IMEDIATE = 3
+    ALU_CODE = 4
+    PIPELINED = 5
+    LATENCY = 6
+
+
+class InsrtructionTable:  # (Instruction label, destination, n_sources,imediate, alu code, pipelined, latency)
+    Instructions = {'add': (InstrLabel.INT, True, 2, False, ALUCode.ADD, True, 1),
+                    'li': (InstrLabel.INT, True, 0, True, ALUCode.ADD, True, 1),
+                    'nop': (InstrLabel.INT, False, 0, False, ALUCode.ADD, True, 1),
+                    'new': (InstrLabel.HILAR, True)}
+
+# Not used
+
+# List of objects that will be executed by the HILAR queue
+
+
+class HilarObjects:
+    objects = ['_b_node_']
+# List of objects that will be executed by the Integer Queue
+
+
+class IntObjects:
+    objects = ['_array_', '_int_', '_bool_', '_byte_']
 
 
 class HilarMethods:

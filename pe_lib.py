@@ -1,20 +1,20 @@
 import salabim as sim
-import reorderbuffer_lib as rob
 import fetch_lib as fetch
-import reg_file_lib as rf
+import resources_lib as res
 
 
 class PE(sim.Component):
-    def setup(self, fetch_width, physical_registers, int_alus, rob_entries, program):
+    def setup(self, fetch_width, physical_registers, int_alus, rob_entries, int_queue_slots, program):
+        # Parameters
         self.fetch_width = fetch_width
         self.physical_registers = physical_registers
         self.int_alus = int_alus
         self.rob_entries = rob_entries
         self.program = program
-        self.decode_state = sim.State("decode_ready", value=True)
-        self.int_units = sim.Resource('int_units', capacity=3)
-        self.int_queue = sim.Resource('int_queue', capacity=16)
-        self.h_units = sim.Resource('h_units', capacity=1)
-        self.register_file = rf.RegFile(physical_registers=self.physical_registers)
-        self.Rob = rob.ReorderBuffer(rob_entries=self.rob_entries)
-        self.InstrCache_inst = fetch.InstrCache(program=program, rob=self.Rob, pe=self)
+        self.int_queue_slots = int_queue_slots
+        # Resources
+        self.ResInst = res.Resources(fetch_width=self.fetch_width, physical_registers=self.physical_registers,
+                                     int_alus=self.int_alus, rob_entries=self.rob_entries,
+                                     int_queue_slots=self.int_queue_slots)
+        # Instr cache + fetch engine
+        self.InstrCacheInst = fetch.InstrCache(program=program, resources=self.ResInst)
