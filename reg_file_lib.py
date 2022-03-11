@@ -13,7 +13,7 @@ class RegFile(sim.Component):
         return self.rat[arch_reg]
 
     def process(self):
-         while True:
+        while True:
             yield self.hold(1)
 
 
@@ -23,5 +23,5 @@ class PhysicalRegister(sim.Component):
         self.value = value
 
     def process(self):
-         while True:
+        while True:
             yield self.hold(1)

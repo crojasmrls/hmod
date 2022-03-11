@@ -1,10 +1,9 @@
-import salabim as sim
 import fetch_lib as fetch
 import resources_lib as res
 
 
-class PE(sim.Component):
-    def setup(self, fetch_width, physical_registers, int_alus, rob_entries, int_queue_slots, program):
+class PE:
+    def __init__(self, fetch_width, physical_registers, int_alus, rob_entries, int_queue_slots, program):
         # Parameters
         self.fetch_width = fetch_width
         self.physical_registers = physical_registers

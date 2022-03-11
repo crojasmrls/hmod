@@ -30,7 +30,6 @@ class InstrCache(sim.Component):
         self.branch_taken = False
         self.take_branch = False
         self.resources = resources
-        #self.fetch_resource = self.resources.fetch_resource
         # watch(self.fetch_resource.claimed_quantity.value)
 
     def read_program(self):
@@ -77,27 +76,32 @@ class InstrCache(sim.Component):
     def create_instr(self, bb_name, offset):
         new_instr = instr.Instr(instruction=self.bb_dict[bb_name].instr[offset], resources=self.resources, fetch_unit=self)
         self.next_inst = self.bb_dict[bb_name].instr[offset]
-        yield from self.resources.RobInst.add_instr(new_instr)
-
-        # return self.bb_dict[bb_name].instr[offset]
+        self.resources.RobInst.add_instr(new_instr)
 
     def change_pc(self, bb_name_branch):
         self.branch_taken = True
         yield from self.create_instr(self.bb_name, self.offset)
 
+    def release_rob(self):
+        self.release((self.resources.RobInst.rob_resource, 1))
+
+    def release_fetch(self):
+        self.release((self.resources.fetch_resource, 1))
+
     def process(self):
         while self.bb_name != 'END' or self.resources.RobInst.count_inst != 0:
-            yield self.resources.request(self.resources.fetch_resource)
+            yield self.request(self.resources.fetch_resource)
             if not self.take_branch:
                 # self.offset = self.offset + 1
                 pass
             else:
                 pass
             if self.bb_name == 'END':
-                break
+                yield self.passivate()
             else:
                 yield self.wait(self.resources.decode_state)
-                yield from self.create_instr(self.bb_name, self.offset)
+                yield self.request(self.resources.RobInst.rob_resource)
+                self.create_instr(self.bb_name, self.offset)
                 # self.next_inst = self.send_instr(self.bb_name, self.offset)
             if self.offset == len(self.bb_dict[self.bb_name].instr) - 1:
 

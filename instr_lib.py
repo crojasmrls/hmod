@@ -20,7 +20,7 @@ class Instr(sim.Component):
         self.state = 'decode'
         yield self.hold(1)  # Decode
         # self.resources.fetch_resource.release()
-        self.release(self.resources.fetch_resource, 1)
+        self.fetch_unit.release_fetch()
         yield self.wait(self.resources.decode_state, urgent=True)
         self.resources.decode_state.set(False)
         if self.instr_touple[INTFields.LABEL] == InstrLabel.INT:  # Put enum value
@@ -28,30 +28,34 @@ class Instr(sim.Component):
         #   self.enter(self.int_queue)
             # If there is destination a physical register is requested and created
             if self.instr_touple[INTFields.DEST]:
-                yield self.request(self.resources.reg_file.FRL_resource)
+                yield self.request(self.resources.RegisterFileInst.FRL_resource)
                 self.p_dest = PhysicalRegister(state=False, value=self.dest)
-                self.p_old_dest = self.resources.reg_file.get_reg(self.dest)
-                self.resources.reg_file.set_reg(self.dest, self.p_dest)
+                self.p_old_dest = self.resources.RegisterFileInst.get_reg(self.dest)
+                self.resources.RegisterFileInst.set_reg(self.dest, self.p_dest)
 
             self.resources.decode_state.set(True)
             yield self.hold(1)  # Hold for dispatch stage
-            for x in self.sources:
-                yield self.wait(self.resources.reg_file.get_reg(x).reg_state)
-            yield self.request(self.resources.int_units, 1)
-            self.release(self.resources.int_queue, 1)
-            if self.instr_touple[INTFields.PIPELINED]:  # If operation is pipelined
+            if self.instr_touple[INTFields.DEST]:  # Computation does not performed if there is no destination
+                for x in self.p_sources:
+                    yield self.wait(x.reg_state)
+                yield self.request(self.resources.int_units)
+                self.release(self.resources.int_queue)
+                self.compute()
+                if self.instr_touple[INTFields.PIPELINED]:  # If operation is pipelined
+                    yield self.hold(1)
+                    self.release((self.resources.int_units, 1))
+                    yield self.hold(self.instr_touple[INTFields.LATENCY]-1)  # Latency - 1
+                    self.p_dest.reg_state.set(True)
+                else:
+                    yield self.hold(self.instr_touple[INTFields.LATENCY])
+                    self.p_dest.reg_state.set(True)
+                    self.release(self.resources.int_units, 1)
+            # yield from self.resources.RobInst.instr_end(self)
+            while not self.resources.RobInst.instr_end(self):
                 yield self.hold(1)
-                self.release(self.resources.int_units, 1)
-                yield self.hold(self.instr_touple[INTFields.LATENCY]-1)  # Latency - 1
-                self.p_dest.reg_state.set(True)
-            else:
-                yield self.hold(self.instr_touple[INTFields.LATENCY])
-                self.p_dest.reg_state.set(True)
-                self.release(self.resources.int_units, 1)
-            self.compute()
-
-            yield from self.resources.RobInst.instr_end(self)
-
+            # self.fetch_unit.release((self.resources.RobInst.rob_resource, 1))
+            self.resources.RobInst.release_instr()
+            self.fetch_unit.release_rob()
 #        elif self.type == 'HILAR':
 #            # self.enter(self.h_queue)
 #            yield self.request(self.resources.h_units)
@@ -63,16 +67,12 @@ class Instr(sim.Component):
             # flush pipeline
             # elf.fetch_unit_
         # liberar la unidad
-        self.resources.RobInst.instr_end()
 
     def flush(self):
         self.resources.RobInst.instr_end()
 
     def compute(self):
-        if self.instr_touple[INTFields.ALU_CODE] == ALUCode.ADD:
-            self.p_dest.value = \
-                self.resources.reg_file.get_reg(self.sources[0]).value + \
-                self.resources.reg_file.get_reg(self.sources[0]).value
+        self.instr_touple[INTFields.EXEC](self)
 
         # set the execution value
         # calculate the result
@@ -91,7 +91,7 @@ class Instr(sim.Component):
                     print("NameError: Invalid destination register")
             for x in range(self.instr_touple[INTFields.N_SOURCES]):
                 try:
-                    self.sources[x] = IntRegisterTable.registers[parsed_instr.pop(0)]
+                    self.sources.append(IntRegisterTable.registers[parsed_instr.pop(0)])
                 except NameError:
                     print("NameError: Invalid source register")
             if self.instr_touple[INTFields.IMEDIATE]:
@@ -99,6 +99,7 @@ class Instr(sim.Component):
                     self.imediate = int(parsed_instr.pop(0))
                 except NameError:
                     print("NameError: Invalid imediate")
+            self.p_sources = [self.resources.RegisterFileInst.get_reg(x) for x in self.sources]
 
 
 class IntRegisterTable:  # Register map of the micro architecture
@@ -134,12 +135,27 @@ class INTFields(IntEnum):
     ALU_CODE = 4
     PIPELINED = 5
     LATENCY = 6
+    EXEC = 7
+
+
+def exec_add(instr):
+    if len(instr.sources) == 2:
+        instr.p_dest.value = \
+            instr.resources.RegisterFileInst.get_reg(instr.sources[0]).value + \
+            instr.resources.RegisterFileInst.get_reg(instr.sources[1]).value
+    elif instr.instr_touple[INTFields.IMEDIATE]:
+        if len(instr.sources) == 1:
+            instr.p_dest.value = \
+                instr.resources.RegisterFileInst.get_reg(instr.sources[0]).value + \
+                instr.imediate
+        else:
+            instr.p_dest.value = instr.imediate
 
 
 class InsrtructionTable:  # (Instruction label, destination, n_sources,imediate, alu code, pipelined, latency)
-    Instructions = {'add': (InstrLabel.INT, True, 2, False, ALUCode.ADD, True, 1),
-                    'li': (InstrLabel.INT, True, 0, True, ALUCode.ADD, True, 1),
-                    'nop': (InstrLabel.INT, False, 0, False, ALUCode.ADD, True, 1),
+    Instructions = {'add': (InstrLabel.INT, True, 2, False, ALUCode.ADD, True, 1, exec_add),
+                    'li': (InstrLabel.INT, True, 0, True, ALUCode.ADD, True, 1, exec_add),
+                    'nop': (InstrLabel.INT, False, 0, False, ALUCode.ADD, True, 1, exec_add),
                     'new': (InstrLabel.HILAR, True)}
 
 # Not used
