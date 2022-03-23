@@ -51,11 +51,14 @@ class Instr(sim.Component):
                     self.p_dest.reg_state.set(True)
                     self.release(self.resources.int_units, 1)
             # yield from self.resources.RobInst.instr_end(self)
-            while not self.resources.RobInst.instr_end(self):
+            while self.resources.RobInst.instr_end(self):
                 yield self.hold(1)
             # self.fetch_unit.release((self.resources.RobInst.rob_resource, 1))
             self.resources.RobInst.release_instr()
             self.fetch_unit.release_rob()
+            if self.resources.finished and (self.resources.RobInst.count_inst == 0):
+                print('Program end')
+            print('Intruction finished: ',self.instruction)
 #        elif self.type == 'HILAR':
 #            # self.enter(self.h_queue)
 #            yield self.request(self.resources.h_units)

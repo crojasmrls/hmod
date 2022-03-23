@@ -21,3 +21,4 @@ class Resources:
         self.RegisterFileInst = rf.RegFile(physical_registers=self.physical_registers)
         # states
         self.decode_state = sim.State("decode_ready", value=True)
+        self.finished = False

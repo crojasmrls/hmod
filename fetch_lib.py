@@ -97,6 +97,7 @@ class InstrCache(sim.Component):
             else:
                 pass
             if self.bb_name == 'END':
+                self.resources.finished = True
                 yield self.passivate()
             else:
                 yield self.wait(self.resources.decode_state)
@@ -109,7 +110,8 @@ class InstrCache(sim.Component):
                 self.offset = 0
                 while len(self.bb_dict[self.bb_name].instr) == 0:
                     if self.bb_name == 'END':
-                        break
+                        self.resources.finished = True
+                        yield self.passivate()
                     self.bb_name = self.bb_dict[self.bb_name].next_block
             else:
                 self.offset = self.offset + 1
