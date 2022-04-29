@@ -33,34 +33,30 @@ class InstrCache(sim.Component):
         # watch(self.fetch_resource.claimed_quantity.value)
 
     def read_program(self):
-        with sim.ItemFile('../programs/'+self.program) as f:
-            bb_name_prev = ''
-            bb_name = ''
-            instr_count = 0
-            while True:
-                try:
-                    read_item = f.read_item()
-                    if read_item[0] == ':':
-                        instr_count = 0
-                        bb_name = read_item[1:len(read_item)]
-                        if len(self.bb_dict) > 0:
-                            self.bb_dict[bb_name_prev].set_next_block(bb_name)
-                        if len(self.bb_dict) == 0:
-                            self.first_block = bb_name
-                        self.bb_dict[bb_name] = BasicInstrBlock(bb_name)
-                        bb_name_prev = bb_name
-                    else:
-                        instr_buf = ''
-                        while read_item != ':':
-                            if instr_buf == '':
-                                instr_buf = read_item
-                            else:
-                                instr_buf = instr_buf + ' ' + read_item
-                            read_item = f.read_item()
-                        self.bb_dict[bb_name].add_instr(instr_buf)
-                        instr_count = instr_count + 1
-                except EOFError:
-                    break
+        bb_name_prev = ''
+        bb_name = ''
+        instr_count = 0
+        f = open('../programs/' + self.program, "r")
+        lines = f.readlines()
+        for line in lines:
+            line = line.replace("\n", "")
+            line = line.split('#')[0]
+            # If the line is a code segment tag
+            if line.find(':') != -1:
+                instr_count = 0
+                # Remove the code segment tag indicator
+                bb_name = line.split(':')[0]
+                if len(bb_name) != 0:
+                    if len(self.bb_dict) > 0:
+                        self.bb_dict[bb_name_prev].set_next_block(bb_name)
+                    if len(self.bb_dict) == 0:
+                        self.first_block = bb_name
+                    self.bb_dict[bb_name] = BasicInstrBlock(bb_name)
+                    bb_name_prev = bb_name
+            else:
+                if len(line) != 0:
+                    self.bb_dict[bb_name].add_instr(line)
+                    instr_count = instr_count + 1
 
     def print_program(self):
         bb_name = self.first_block
@@ -74,7 +70,8 @@ class InstrCache(sim.Component):
         return self.first_block
 
     def create_instr(self, bb_name, offset):
-        new_instr = instr.Instr(instruction=self.bb_dict[bb_name].instr[offset], resources=self.resources, fetch_unit=self)
+        new_instr = instr.Instr(instruction=self.bb_dict[bb_name].instr[offset],
+                                resources=self.resources, fetch_unit=self)
         self.next_inst = self.bb_dict[bb_name].instr[offset]
         self.resources.RobInst.add_instr(new_instr)
 
