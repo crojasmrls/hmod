@@ -54,7 +54,7 @@ class InstrCache(sim.Component):
                     self.bb_dict[bb_name] = BasicInstrBlock(bb_name)
                     bb_name_prev = bb_name
             else:
-                if len(line) != 0:
+                if len(line.replace(" ", "")) != 0:
                     self.bb_dict[bb_name].add_instr(line)
                     instr_count = instr_count + 1
 
