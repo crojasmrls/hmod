@@ -19,24 +19,19 @@ class Instr(sim.Component):
         print(self.instruction)
         self.state = 'decode'
         yield self.hold(1)  # Decode
-        # self.resources.fetch_resource.release()
         self.fetch_unit.release_fetch()
         yield self.wait(self.resources.decode_state, urgent=True)
         self.resources.decode_state.set(False)
-        if self.instr_touple[INTFields.LABEL] == InstrLabel.INT \
-                or self.instr_touple[INTFields.LABEL] == InstrLabel.LOAD \
-                or self.instr_touple[INTFields.LABEL] == InstrLabel.STORE:
+        # Aritmethic Datapath
+        if self.instr_touple[INTFields.DEST]:
+            yield self.request(self.resources.RegisterFileInst.FRL_resource)
+            self.p_dest = PhysicalRegister(state=False, value=self.dest)
+            self.p_old_dest = self.resources.RegisterFileInst.get_reg(self.dest)
+            self.resources.RegisterFileInst.set_reg(self.dest, self.p_dest)
+        if self.instr_touple[INTFields.LABEL] == InstrLabel.INT:
             yield self.request(self.resources.int_queue)
         #   self.enter(self.int_queue)
             # If there is destination a physical register is requested and created
-            if self.instr_touple[INTFields.DEST]:
-                yield self.request(self.resources.RegisterFileInst.FRL_resource)
-                self.p_dest = PhysicalRegister(state=False, value=self.dest)
-                self.p_old_dest = self.resources.RegisterFileInst.get_reg(self.dest)
-                self.resources.RegisterFileInst.set_reg(self.dest, self.p_dest)
-            elif self.instr_touple[INTFields.LABEL] == InstrLabel.STORE:
-                yield self.request(self.resources.store_buffer)
-
             self.resources.decode_state.set(True)
             yield self.hold(1)  # Hold for dispatch stage
             for x in self.p_sources:
@@ -56,9 +51,23 @@ class Instr(sim.Component):
                 if self.instr_touple[INTFields.DEST]:  # Set executed bit
                     self.p_dest.reg_state.set(True)
                 self.release(self.resources.int_units, 1)
-        if self.instr_touple[INTFields.LABEL] == InstrLabel.STORE:
-            pass
-        #  Waiting for commit
+        # LSU datapath
+        elif self.instr_touple[INTFields.LABEL] == InstrLabel.LOAD \
+                or self.instr_touple[INTFields.LABEL] == InstrLabel.STORE:
+            yield self.request(self.resources.LoadStoreQueueInst.lsu_slots)
+            self.resources.decode_state.set(True)
+            # self.enter(self.resources.LoadStoreQueueInst.entries)
+            #  Waiting for commit
+            while self.resources.RobInst.instr_end(self):
+                yield self.hold(1)
+            if self.instr_touple[INTFields.LABEL] == InstrLabel.LOAD:
+                address = self.p_sorces[0].value + self.immediate
+                self.p_dest.value = self.resources.DcacheInst.dc_load(address)
+                self.p_dest.reg_state.set(True)
+            else:
+                address = self.p_sources[1].value + self.immediate
+                self.resources.DataCacheInst.dc_store(address, self.p_sources[0].value)
+
         while self.resources.RobInst.instr_end(self):
             yield self.hold(1)
        # Commit
@@ -112,7 +121,8 @@ class Instr(sim.Component):
                     print("NameError: Invalid immediate")
 
         # MEM parse data source or destination, addr base source and immediate
-        if self.instr_touple[INTFields.LABEL] == InstrLabel.STORE:
+        if self.instr_touple[INTFields.LABEL] == InstrLabel.STORE \
+                or self.instr_touple[INTFields.LABEL] == InstrLabel.LOAD:
             if self.instr_touple[INTFields.DEST]:
                 try:
                     self.dest = IntRegisterTable.registers[parsed_instr.pop(0)]
@@ -203,11 +213,11 @@ class InstructionTable:
         {
             # INT Instruction       destination n_sources immediate alu code     pipelined latency computation
             'add': (InstrLabel.INT, True,       2,        False,    ALUCode.ADD, True,     1,      exec_add),
-            'addi':(InstrLabel.INT, True,       1,        True,     ALUCode.ADD, True,     1,      exec_add),
+            'addi': (InstrLabel.INT, True,       1,        True,     ALUCode.ADD, True,     1,      exec_add),
             'li': (InstrLabel.INT,  True,       0,        True,     ALUCode.ADD, True,     1,      exec_add),
             'nop': (InstrLabel.INT, False,      0,        False,    ALUCode.ADD, True,     1,      exec_add),
             # MEM Instruction       destination n_sources immediate alu code     pipelined latency computation width
-            'sw': (InstrLabel.STORE,  False,     1,        True,     ALUCode.ADD, True,     1,    exec_addr,   32),
+            'sd': (InstrLabel.STORE,  False,     1,        True,     ALUCode.ADD, True,     1,    exec_addr,   64),
             # HILAR
             'new': (InstrLabel.HILAR, True)}
 
