@@ -21,7 +21,7 @@ class BasicInstrBlock:
 
 class InstrCache(sim.Component):
     """docstring for InstrCache"""
-    def setup(self, program, resources):
+    def setup(self, program, resources, thread_id, konata_signature):
         self.program = program
         self.bb_dict = {}
         self.first_block = 'END'
@@ -30,6 +30,9 @@ class InstrCache(sim.Component):
         self.branch_taken = False
         self.take_branch = False
         self.resources = resources
+        self.thread_id = thread_id
+        self.konata_signature = konata_signature
+        self.instr_id = 0
         # watch(self.fetch_resource.claimed_quantity.value)
 
     def read_program(self):
@@ -38,7 +41,9 @@ class InstrCache(sim.Component):
         instr_count = 0
         f = open('../programs/' + self.program, "r")
         lines = f.readlines()
+        line_number = 0
         for line in lines:
+            line_number += 1
             line = line.replace("\n", "")
             line = line.split('#')[0]
             # If the line is a code segment tag
@@ -55,7 +60,7 @@ class InstrCache(sim.Component):
                     bb_name_prev = bb_name
             else:
                 if len(line.replace(" ", "")) != 0:
-                    self.bb_dict[bb_name].add_instr(line)
+                    self.bb_dict[bb_name].add_instr((line, line_number))
                     instr_count = instr_count + 1
 
     def print_program(self):
@@ -70,8 +75,14 @@ class InstrCache(sim.Component):
         return self.first_block
 
     def create_instr(self, bb_name, offset):
-        new_instr = instr.Instr(instruction=self.bb_dict[bb_name].instr[offset],
-                                resources=self.resources, fetch_unit=self)
+        self.instr_id += 1
+        new_instr = instr.Instr(instruction=self.bb_dict[bb_name].instr[offset][0],
+                                line_number=self.bb_dict[bb_name].instr[offset][1],
+                                resources=self.resources, thread_id=self.thread_id,
+                                instr_id=self.instr_id,
+                                konata_signature=self.konata_signature, fetch_unit=self)
+        self.konata_signature.new_instr(self.thread_id, self.instr_id, self.bb_dict[bb_name].instr[offset][1],
+                                        self.bb_dict[bb_name].instr[offset][0])
         self.next_inst = self.bb_dict[bb_name].instr[offset]
         self.resources.RobInst.add_instr(new_instr)
 

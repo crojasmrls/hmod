@@ -5,21 +5,28 @@ from reg_file_lib import PhysicalRegister
 
 
 class Instr(sim.Component):
-    def setup(self, instruction, resources, fetch_unit):
+    def setup(self, instruction, line_number, resources, konata_signature, thread_id, instr_id, fetch_unit):
         # Instruction String
         self.instruction = instruction
+        self.line_number = line_number
         # Resources pointer
         self.resources = resources
         self.fetch_unit = fetch_unit
+        self.thread_id = thread_id
+        self.instr_id = instr_id
+        self.konata_signature = konata_signature
         # Decoded Fields
         self.sources = []
         self.set_fields()
 
     def process(self):
         print(self.instruction)
-        self.state = 'decode'
+        self.state = 'DEC'
         yield self.hold(1)  # Decode
+        self.konata_signature.print_stage('FET', self.state, self.thread_id, self.instr_id)
         self.fetch_unit.release_fetch()
+        yield self.hold(1)  # Decode
+        self.konata_signature.print_stage('DEC', 'RNM', self.thread_id, self.instr_id)
         yield self.wait(self.resources.decode_state, urgent=True)
         self.resources.decode_state.set(False)
         # Aritmethic Datapath
@@ -33,12 +40,19 @@ class Instr(sim.Component):
         #   self.enter(self.int_queue)
             # If there is destination a physical register is requested and created
             self.resources.decode_state.set(True)
-            yield self.hold(1)  # Hold for dispatch stage
+            yield self.hold(1)  # Hold for renaming stage
+            self.konata_signature.print_stage('DEC', 'DIS', self.thread_id, self.instr_id)
+            yield self.hold(1)
+            self.konata_signature.print_stage('DIS', 'QUE', self.thread_id, self.instr_id)
             for x in self.p_sources:
                 yield self.wait(x.reg_state)
+            self.konata_signature.print_stage('DIS', 'WUP', self.thread_id, self.instr_id)
             yield self.request(self.resources.int_units)
             self.release(self.resources.int_queue)
+            self.konata_signature.print_stage('WUP', 'RRE', self.thread_id, self.instr_id)
+            yield self.hold(1)  # Hold for issue stage
             self.compute()
+            self.konata_signature.print_stage('RRE', 'EXE', self.thread_id, self.instr_id)
             if self.instr_touple[INTFields.PIPELINED]:  # If operation is pipelined
                 yield self.hold(1)
                 self.release((self.resources.int_units, 1))
@@ -51,15 +65,21 @@ class Instr(sim.Component):
                 if self.instr_touple[INTFields.DEST]:  # Set executed bit
                     self.p_dest.reg_state.set(True)
                 self.release(self.resources.int_units, 1)
+            self.konata_signature.print_stage('MEM', 'CMP', self.thread_id, self.instr_id)
         # LSU datapath
         elif self.instr_touple[INTFields.LABEL] == InstrLabel.LOAD \
                 or self.instr_touple[INTFields.LABEL] == InstrLabel.STORE:
             yield self.request(self.resources.LoadStoreQueueInst.lsu_slots)
             self.resources.decode_state.set(True)
+            yield self.hold(1)  # Hold for dispatch stage
+            self.konata_signature.print_stage('DEC', 'DIS', self.thread_id, self.instr_id)
             # self.enter(self.resources.LoadStoreQueueInst.entries)
             #  Waiting for commit
             while self.resources.RobInst.instr_end(self):
                 yield self.hold(1)
+            self.konata_signature.print_stage('DIS', 'RRE', self.thread_id, self.instr_id)
+            yield self.hold(1)
+            self.konata_signature.print_stage('RRE', 'MEM', self.thread_id, self.instr_id)
             if self.instr_touple[INTFields.LABEL] == InstrLabel.LOAD:
                 address = self.p_sorces[0].value + self.immediate
                 self.p_dest.value = self.resources.DcacheInst.dc_load(address)
@@ -67,14 +87,19 @@ class Instr(sim.Component):
             else:
                 address = self.p_sources[1].value + self.immediate
                 self.resources.DataCacheInst.dc_store(address, self.p_sources[0].value)
-
+            yield  self.hold(3)
+            self.konata_signature.print_stage('MEM', 'CMP', self.thread_id, self.instr_id)
+        yield self.hold(1)  # WB cycle
         while self.resources.RobInst.instr_end(self):
             yield self.hold(1)
-       # Commit
+    # Commit
+        self.konata_signature.print_stage('CMP', 'COM', self.thread_id, self.instr_id)
         self.resources.RobInst.release_instr()
         self.fetch_unit.release_rob()
+        yield self.hold(1)
         if self.resources.finished and (self.resources.RobInst.count_inst == 0):
             print('Program end')
+        self.konata_signature.retire_instr(self.thread_id, self.instr_id, False)
         print('Instruction finished: ', self.instruction)
 #        elif self.type == 'HILAR':
 #            # self.enter(self.h_queue)
@@ -165,6 +190,7 @@ class InstrLabel(Enum):
     LOAD = auto()
     STORE = auto()
 
+
 class ALUCode(Enum):
     OR = auto()
     ADD = auto()
@@ -206,6 +232,7 @@ def exec_addr(instr):
                 instr.immediate
         else:
             instr.address.value = instr.immediate
+
 
 class InstructionTable:
 
