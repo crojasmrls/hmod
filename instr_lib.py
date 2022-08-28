@@ -1,6 +1,5 @@
 import salabim as sim
-from enum import IntEnum, Enum, auto
-
+import rv64uih_lib as dec
 from reg_file_lib import PhysicalRegister
 
 
@@ -31,12 +30,12 @@ class Instr(sim.Component):
         yield self.wait(self.resources.decode_state, urgent=True)
         self.resources.decode_state.set(False)
         # Aritmethic Datapath
-        if self.instr_touple[INTFields.DEST]:
+        if self.instr_touple[dec.INTFields.DEST]:
             yield self.request(self.resources.RegisterFileInst.FRL_resource)
             self.p_dest = PhysicalRegister(state=False, value=self.dest)
             self.p_old_dest = self.resources.RegisterFileInst.get_reg(self.dest)
             self.resources.RegisterFileInst.set_reg(self.dest, self.p_dest)
-        if self.instr_touple[INTFields.LABEL] == InstrLabel.INT:
+        if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.INT:
             yield self.request(self.resources.int_queue)
         #   self.enter(self.int_queue)
             # If there is destination a physical register is requested and created
@@ -54,22 +53,22 @@ class Instr(sim.Component):
             yield self.hold(1)  # Hold for issue stage
             self.compute()
             self.konata_signature.print_stage('RRE', 'EXE', self.thread_id, self.instr_id)
-            if self.instr_touple[INTFields.PIPELINED]:  # If operation is pipelined
+            if self.instr_touple[dec.INTFields.PIPELINED]:  # If operation is pipelined
                 yield self.hold(1)
                 self.release((self.resources.int_units, 1))
-                yield self.hold(self.instr_touple[INTFields.LATENCY]-1)  # Latency - 1
-                if self.instr_touple[INTFields.DEST]:  # Set executed bit
+                yield self.hold(self.instr_touple[dec.INTFields.LATENCY]-1)  # Latency - 1
+                if self.instr_touple[dec.INTFields.DEST]:  # Set executed bit
                     self.p_dest.reg_state.set(True)
             else:
-                yield self.hold(self.instr_touple[INTFields.LATENCY])
-                yield self.hold(self.instr_touple[INTFields.LATENCY]-1)  # Latency - 1
-                if self.instr_touple[INTFields.DEST]:  # Set executed bit
+                yield self.hold(self.instr_touple[dec.INTFields.LATENCY])
+                yield self.hold(self.instr_touple[dec.INTFields.LATENCY]-1)  # Latency - 1
+                if self.instr_touple[dec.INTFields.DEST]:  # Set executed bit
                     self.p_dest.reg_state.set(True)
                 self.release(self.resources.int_units, 1)
             self.konata_signature.print_stage('MEM', 'CMP', self.thread_id, self.instr_id)
         # LSU datapath
-        elif self.instr_touple[INTFields.LABEL] == InstrLabel.LOAD \
-                or self.instr_touple[INTFields.LABEL] == InstrLabel.STORE:
+        elif self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD \
+                or self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
             yield self.request(self.resources.LoadStoreQueueInst.lsu_slots)
             self.resources.decode_state.set(True)
             yield self.hold(1)  # Hold for dispatch stage
@@ -81,7 +80,7 @@ class Instr(sim.Component):
             self.konata_signature.print_stage('DIS', 'RRE', self.thread_id, self.instr_id)
             yield self.hold(1)
             self.konata_signature.print_stage('RRE', 'MEM', self.thread_id, self.instr_id)
-            if self.instr_touple[INTFields.LABEL] == InstrLabel.LOAD:
+            if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD:
                 address = self.p_sources[0].value + self.immediate
                 self.p_dest.value = self.resources.DcacheInst.dc_load(address)
                 self.p_dest.reg_state.set(True)
@@ -118,7 +117,7 @@ class Instr(sim.Component):
         self.resources.RobInst.instr_end()
 
     def compute(self):
-        self.instr_touple[INTFields.EXEC](self)
+        self.instr_touple[dec.INTFields.EXEC](self)
 
         # set the execution value
         # calculate the result
@@ -126,37 +125,37 @@ class Instr(sim.Component):
     def set_fields(self):
         parsed_instr = self.instruction.replace(',', ' ').split()
         try:
-            self.instr_touple = InstructionTable.Instructions[parsed_instr.pop(0)]
+            self.instr_touple = dec.InstructionTable.Instructions[parsed_instr.pop(0)]
         except NameError:
             print("NameError: Not supported instruction")
-        if self.instr_touple[INTFields.LABEL] == InstrLabel.INT:
-            if self.instr_touple[INTFields.DEST]:
+        if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.INT:
+            if self.instr_touple[dec.INTFields.DEST]:
                 try:
-                    self.dest = IntRegisterTable.registers[parsed_instr.pop(0)]
+                    self.dest = dec.IntRegisterTable.registers[parsed_instr.pop(0)]
                 except NameError:
                     print("NameError: Invalid destination register")
-            for x in range(self.instr_touple[INTFields.N_SOURCES]):
+            for x in range(self.instr_touple[dec.INTFields.N_SOURCES]):
                 try:
-                    self.sources.append(IntRegisterTable.registers[parsed_instr.pop(0)])
+                    self.sources.append(dec.IntRegisterTable.registers[parsed_instr.pop(0)])
                 except NameError:
                     print("NameError: Invalid source register")
-            if self.instr_touple[INTFields.IMMEDIATE]:
+            if self.instr_touple[dec.INTFields.IMMEDIATE]:
                 try:
                     self.immediate = int(parsed_instr.pop(0))
                 except NameError:
                     print("NameError: Invalid immediate")
 
         # MEM parse data source or destination, addr base source and immediate
-        if self.instr_touple[INTFields.LABEL] == InstrLabel.STORE \
-                or self.instr_touple[INTFields.LABEL] == InstrLabel.LOAD:
-            if self.instr_touple[INTFields.DEST]:
+        if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.STORE \
+                or self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD:
+            if self.instr_touple[dec.INTFields.DEST]:
                 try:
-                    self.dest = IntRegisterTable.registers[parsed_instr.pop(0)]
+                    self.dest = dec.IntRegisterTable.registers[parsed_instr.pop(0)]
                 except NameError:
                     print("NameError: Invalid destination register")
             else:
                 try:
-                    self.sources.append(IntRegisterTable.registers[parsed_instr.pop(0)])
+                    self.sources.append(dec.IntRegisterTable.registers[parsed_instr.pop(0)])
                 except NameError:
                     print("NameError: Invalid source register")
             parsed_instr = parsed_instr.pop(0).replace('(', ' ').split()
@@ -166,106 +165,7 @@ class Instr(sim.Component):
                 print("NameError: Invalid immediate")
             parsed_instr = parsed_instr.pop(0).split(')')[0]
             try:
-                self.sources.append(IntRegisterTable.registers[parsed_instr])
+                self.sources.append(dec.IntRegisterTable.registers[parsed_instr])
             except NameError:
                 print("NameError: Invalid source register")
         self.p_sources = [self.resources.RegisterFileInst.get_reg(x) for x in self.sources]
-
-
-class IntRegisterTable:  # Register map of the micro architecture
-    registers = {'zero': 0, 'ra': 1, 'sp': 2, 'gp': 3,
-                 'tp': 4, 't0': 5, 't1': 6, 't2': 7,
-                 's0': 8, 's1': 9, 'a0': 10, 'a1': 11,
-                 'a2': 12, 'a3': 13, 'a4': 14, 'a5': 15,
-                 'a6': 16, 'a7': 17, 's2': 18, 's3': 19,
-                 's4': 20, 's5': 21, 's6': 22, 's7': 23,
-                 's8': 24, 's9': 25, 's10': 26, 's11': 27,
-                 't3': 28, 't4': 29, 't5': 30, 't6': 31}
-
-
-class InstrLabel(Enum):
-    INT = auto()
-    FP = auto()
-    HILAR = auto()
-    CALL = auto()
-    LOAD = auto()
-    STORE = auto()
-
-
-class ALUCode(Enum):
-    OR = auto()
-    ADD = auto()
-    SUB = auto()
-    MULT = auto()
-
-
-class INTFields(IntEnum):
-    LABEL = 0
-    DEST = 1
-    N_SOURCES = 2
-    IMMEDIATE = 3
-    ALU_CODE = 4
-    PIPELINED = 5
-    LATENCY = 6
-    EXEC = 7
-    WIDTH = 8
-
-
-def exec_add(instr):
-    if instr.instr_touple[INTFields.IMMEDIATE]:
-        if len(instr.sources) >= 1:
-            instr.p_dest.value = \
-                instr.resources.RegisterFileInst.get_reg(instr.sources[0]).value + \
-                instr.immediate
-        else:
-            instr.p_dest.value = instr.immediate
-    elif len(instr.sources) == 2:
-        instr.p_dest.value = \
-            instr.resources.RegisterFileInst.get_reg(instr.sources[0]).value + \
-            instr.resources.RegisterFileInst.get_reg(instr.sources[1]).value
-
-
-def exec_addr(instr):
-    if instr.instr_touple[INTFields.IMMEDIATE]:
-        if len(instr.sources) >= 1:
-            instr.address = \
-                instr.resources.RegisterFileInst.get_reg(instr.sources[0]).value + \
-                instr.immediate
-        else:
-            instr.address.value = instr.immediate
-
-
-class InstructionTable:
-
-    Instructions = \
-        {
-            # INT Instruction       destination n_sources immediate alu code     pipelined latency computation
-            'add': (InstrLabel.INT, True,       2,        False,    ALUCode.ADD, True,     1,      exec_add),
-            'addi': (InstrLabel.INT, True,       1,        True,     ALUCode.ADD, True,     1,      exec_add),
-            'li': (InstrLabel.INT,  True,       0,        True,     ALUCode.ADD, True,     1,      exec_add),
-            'nop': (InstrLabel.INT, False,      0,        False,    ALUCode.ADD, True,     1,      exec_add),
-            # MEM Instruction       destination n_sources immediate alu code     pipelined latency computation width
-            'sd': (InstrLabel.STORE,  False,     1,        True,     ALUCode.ADD, True,     1,    exec_addr,   64),
-            # HILAR
-            'new': (InstrLabel.HILAR, True)}
-
-# Not used
-
-# List of objects that will be executed by the HILAR queue
-
-
-class HilarObjects:
-    objects = ['_b_node_']
-# List of objects that will be executed by the Integer Queue
-
-
-class IntObjects:
-    objects = ['_array_', '_int_', '_bool_', '_byte_']
-
-
-class HilarMethods:
-    methods = ['insert', 'search', 'get_index', 'print_data']
-
-
-class Calls:
-    calls = ['cout']
