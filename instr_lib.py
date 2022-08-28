@@ -17,6 +17,7 @@ class Instr(sim.Component):
         self.konata_signature = konata_signature
         # Decoded Fields
         self.sources = []
+        self.p_sources = []
         self.set_fields()
 
     def process(self):
@@ -81,13 +82,13 @@ class Instr(sim.Component):
             yield self.hold(1)
             self.konata_signature.print_stage('RRE', 'MEM', self.thread_id, self.instr_id)
             if self.instr_touple[INTFields.LABEL] == InstrLabel.LOAD:
-                address = self.p_sorces[0].value + self.immediate
+                address = self.p_sources[0].value + self.immediate
                 self.p_dest.value = self.resources.DcacheInst.dc_load(address)
                 self.p_dest.reg_state.set(True)
             else:
                 address = self.p_sources[1].value + self.immediate
                 self.resources.DataCacheInst.dc_store(address, self.p_sources[0].value)
-            yield  self.hold(3)
+            yield self.hold(3)
             self.konata_signature.print_stage('MEM', 'CMP', self.thread_id, self.instr_id)
         yield self.hold(1)  # WB cycle
         while self.resources.RobInst.instr_end(self):

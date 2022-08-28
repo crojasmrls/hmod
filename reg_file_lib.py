@@ -5,12 +5,22 @@ class RegFile:
     def __init__(self, physical_registers):
         self.FRL_resource = sim.Resource('FRL_resource', capacity=physical_registers-32)
         self.rat = [PhysicalRegister(state=True, value=i) for i in range(32)]
+        self.rat_stack = []
 
     def set_reg(self, arch_reg, physical_reg):
         self.rat[arch_reg] = physical_reg
 
     def get_reg(self, arch_reg):
         return self.rat[arch_reg]
+
+    def push_rat(self, rob_entry):
+        self.rat_stack.append((self.rat, rob_entry))
+
+    def recover_rat(self, rob_entry):
+        shadow_rat = self.rat_stack.pop()
+        while shadow_rat[1] != rob_entry:
+            shadow_rat = self.rat_stack.pop()
+        self.rat = shadow_rat[0]
 
 
 class PhysicalRegister:
