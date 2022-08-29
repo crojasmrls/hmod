@@ -63,7 +63,7 @@ class InstructionTable:
                     instr.immediate
             else:
                 instr.address.value = instr.immediate
-
+    # Table of tuples
     Instructions = \
         {
             # INT Instruction       destination n_sources immediate alu code     pipelined latency computation

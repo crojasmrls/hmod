@@ -41,21 +41,25 @@ class Instr(sim.Component):
             # If there is destination a physical register is requested and created
             self.resources.decode_state.set(True)
             yield self.hold(1)  # Hold for renaming stage
-            self.konata_signature.print_stage('DEC', 'DIS', self.thread_id, self.instr_id)
+            self.konata_signature.print_stage('RNM', 'DIS', self.thread_id, self.instr_id)
             yield self.hold(1)
-            self.konata_signature.print_stage('DIS', 'QUE', self.thread_id, self.instr_id)
+            self.konata_signature.print_stage('DIS', 'ALL', self.thread_id, self.instr_id)
+            yield self.hold(1)
+            self.konata_signature.print_stage('ALL', 'QUE', self.thread_id, self.instr_id)
             for x in self.p_sources:
                 yield self.wait(x.reg_state)
-            self.konata_signature.print_stage('DIS', 'WUP', self.thread_id, self.instr_id)
+            self.konata_signature.print_stage('QUE', 'WUP', self.thread_id, self.instr_id)
             yield self.request(self.resources.int_units)
-            self.release(self.resources.int_queue)
-            self.konata_signature.print_stage('WUP', 'RRE', self.thread_id, self.instr_id)
+            self.konata_signature.print_stage('WUP', 'ISS', self.thread_id, self.instr_id)
             yield self.hold(1)  # Hold for issue stage
-            self.compute()
+            if self.instr_touple[dec.INTFields.PIPELINED]:
+                self.release((self.resources.int_units, 1))
+            self.konata_signature.print_stage('ISS', 'RRE', self.thread_id, self.instr_id)
+            yield self.hold(1)  # Hold for rre stage
             self.konata_signature.print_stage('RRE', 'EXE', self.thread_id, self.instr_id)
+            self.compute()
             if self.instr_touple[dec.INTFields.PIPELINED]:  # If operation is pipelined
                 yield self.hold(1)
-                self.release((self.resources.int_units, 1))
                 yield self.hold(self.instr_touple[dec.INTFields.LATENCY]-1)  # Latency - 1
                 if self.instr_touple[dec.INTFields.DEST]:  # Set executed bit
                     self.p_dest.reg_state.set(True)
@@ -65,6 +69,7 @@ class Instr(sim.Component):
                 if self.instr_touple[dec.INTFields.DEST]:  # Set executed bit
                     self.p_dest.reg_state.set(True)
                 self.release(self.resources.int_units, 1)
+            self.release(self.resources.int_queue)
             self.konata_signature.print_stage('MEM', 'CMP', self.thread_id, self.instr_id)
         # LSU datapath
         elif self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD \
@@ -73,12 +78,13 @@ class Instr(sim.Component):
             self.resources.decode_state.set(True)
             yield self.hold(1)  # Hold for dispatch stage
             self.konata_signature.print_stage('DEC', 'DIS', self.thread_id, self.instr_id)
+            yield self.hold(1)  # Hold for dispatch stage
+            self.konata_signature.print_stage('DIS', 'LSB', self.thread_id, self.instr_id)
+            yield self.hold(1)
             # self.enter(self.resources.LoadStoreQueueInst.entries)
             #  Waiting for commit
             while self.resources.RobInst.instr_end(self):
                 yield self.hold(1)
-            self.konata_signature.print_stage('DIS', 'RRE', self.thread_id, self.instr_id)
-            yield self.hold(1)
             self.konata_signature.print_stage('RRE', 'MEM', self.thread_id, self.instr_id)
             if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD:
                 address = self.p_sources[0].value + self.immediate
@@ -144,7 +150,6 @@ class Instr(sim.Component):
                     self.immediate = int(parsed_instr.pop(0))
                 except NameError:
                     print("NameError: Invalid immediate")
-
         # MEM parse data source or destination, addr base source and immediate
         if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.STORE \
                 or self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD:
@@ -169,3 +174,4 @@ class Instr(sim.Component):
             except NameError:
                 print("NameError: Invalid source register")
         self.p_sources = [self.resources.RegisterFileInst.get_reg(x) for x in self.sources]
+
