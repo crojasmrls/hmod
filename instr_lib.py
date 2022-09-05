@@ -70,7 +70,7 @@ class Instr(sim.Component):
                     self.p_dest.reg_state.set(True)
                 self.release(self.resources.int_units, 1)
             self.release(self.resources.int_queue)
-            self.konata_signature.print_stage('MEM', 'CMP', self.thread_id, self.instr_id)
+            self.konata_signature.print_stage('EXE', 'CMP', self.thread_id, self.instr_id)
         # LSU datapath
         elif self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD \
                 or self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:

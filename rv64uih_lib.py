@@ -19,13 +19,16 @@ class InstrLabel(Enum):
     CALL = auto()
     LOAD = auto()
     STORE = auto()
+    BRANCH = auto()
 
 
-class ALUCode(Enum):
-    OR = auto()
-    ADD = auto()
-    SUB = auto()
-    MULT = auto()
+# class ALUCode(Enum):
+#     OR = auto()
+#     ADD = auto()
+#     SUB = auto()
+#     MULT = auto()
+#     EQU = auto()
+#     NEQU = auto()
 
 
 class INTFields(IntEnum):
@@ -33,11 +36,10 @@ class INTFields(IntEnum):
     DEST = 1
     N_SOURCES = 2
     IMMEDIATE = 3
-    ALU_CODE = 4
-    PIPELINED = 5
-    LATENCY = 6
-    EXEC = 7
-    WIDTH = 8
+    PIPELINED = 4
+    LATENCY = 5
+    EXEC = 6
+    WIDTH = 7
 
 
 class InstructionTable:
@@ -58,21 +60,32 @@ class InstructionTable:
     def exec_addr(instr):
         if instr.instr_touple[INTFields.IMMEDIATE]:
             if len(instr.sources) >= 1:
-                instr.address = \
+                instr.address.value = \
                     instr.resources.RegisterFileInst.get_reg(instr.sources[0]).value + \
                     instr.immediate
             else:
                 instr.address.value = instr.immediate
+    def exec_nequ(instr):
+        instr.branch_result = \
+            instr.resources.RegisterFileInst.get_reg(instr.sources[0]).value != \
+            instr.resources.RegisterFileInst.get_reg(instr.sources[1]).value
+    def exec_equ(instr):
+        instr.branch_result = \
+            instr.resources.RegisterFileInst.get_reg(instr.sources[0]).value == \
+            instr.resources.RegisterFileInst.get_reg(instr.sources[1]).value
     # Table of tuples
     Instructions = \
         {
-            # INT Instruction       destination n_sources immediate alu code     pipelined latency computation
-            'add': (InstrLabel.INT, True,       2,        False,    ALUCode.ADD, True,     1,      exec_add),
-            'addi': (InstrLabel.INT, True,       1,        True,     ALUCode.ADD, True,     1,      exec_add),
-            'li': (InstrLabel.INT,  True,       0,        True,     ALUCode.ADD, True,     1,      exec_add),
-            'nop': (InstrLabel.INT, False,      0,        False,    ALUCode.ADD, True,     1,      exec_add),
-            # MEM Instruction       destination n_sources immediate alu code     pipelined latency computation width
-            'sd': (InstrLabel.STORE,  False,     1,        True,     ALUCode.ADD, True,     1,    exec_addr,   64),
+            # INT  Instruction         destination  n_sources immediate     pipelined latency computation
+            'add': (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_add),
+            'addi':(InstrLabel.INT,    True,        1,        True,         True,     1,      exec_add),
+            'li':  (InstrLabel.INT,    True,        0,        True,         True,     1,      exec_add),
+            'nop': (InstrLabel.INT,    False,       0,        False,        True,     1,      exec_add),
+            # MEM  Instruction         destination  n_sources immediate     pipelined latency computation width
+            'sd':  (InstrLabel.STORE,  False,       1,        True,         True,     1,      exec_addr,   64),
+            # Branch Instruction       destination  n_sources immediate     pipelined latency computation width
+            'bne': (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_nequ),
+            'beq': (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_equ),
             # HILAR
             'new': (InstrLabel.HILAR, True)}
 
