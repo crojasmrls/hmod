@@ -88,7 +88,7 @@ class Instr(sim.Component):
             self.konata_signature.print_stage('RRE', 'MEM', self.thread_id, self.instr_id)
             if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD:
                 address = self.p_sources[0].value + self.immediate
-                self.p_dest.value = self.resources.DcacheInst.dc_load(address)
+                self.p_dest.value = self.resources.DataCacheInst.dc_load(address)
                 self.p_dest.reg_state.set(True)
             else:
                 address = self.p_sources[1].value + self.immediate
@@ -132,46 +132,54 @@ class Instr(sim.Component):
         parsed_instr = self.instruction.replace(',', ' ').split()
         try:
             self.instr_touple = dec.InstructionTable.Instructions[parsed_instr.pop(0)]
-        except NameError:
+        except:
             print("NameError: Not supported instruction")
+            raise
         if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.INT:
             if self.instr_touple[dec.INTFields.DEST]:
                 try:
                     self.dest = dec.IntRegisterTable.registers[parsed_instr.pop(0)]
-                except NameError:
+                except:
                     print("NameError: Invalid destination register")
+                    raise
             for x in range(self.instr_touple[dec.INTFields.N_SOURCES]):
                 try:
                     self.sources.append(dec.IntRegisterTable.registers[parsed_instr.pop(0)])
-                except NameError:
+                except:
                     print("NameError: Invalid source register")
+                    raise
             if self.instr_touple[dec.INTFields.IMMEDIATE]:
                 try:
                     self.immediate = int(parsed_instr.pop(0))
-                except NameError:
+                except:
                     print("NameError: Invalid immediate")
+                    raise
         # MEM parse data source or destination, addr base source and immediate
         if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.STORE \
                 or self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD:
             if self.instr_touple[dec.INTFields.DEST]:
                 try:
                     self.dest = dec.IntRegisterTable.registers[parsed_instr.pop(0)]
-                except NameError:
+                except:
                     print("NameError: Invalid destination register")
+                    raise
             else:
                 try:
                     self.sources.append(dec.IntRegisterTable.registers[parsed_instr.pop(0)])
-                except NameError:
+                except:
                     print("NameError: Invalid source register")
+                    raise
             parsed_instr = parsed_instr.pop(0).replace('(', ' ').split()
             try:
                 self.immediate = int(parsed_instr.pop(0))
-            except NameError:
+            except:
                 print("NameError: Invalid immediate")
+                raise
             parsed_instr = parsed_instr.pop(0).split(')')[0]
             try:
                 self.sources.append(dec.IntRegisterTable.registers[parsed_instr])
-            except NameError:
+            except:
                 print("NameError: Invalid source register")
+                raise
         self.p_sources = [self.resources.RegisterFileInst.get_reg(x) for x in self.sources]
 
