@@ -17,7 +17,7 @@ KonataSignatureInst = kon.KonataSignature(konata_out=konata_out,
 
 PEInst0 = pe.PE(fetch_width=2, physical_registers=64, int_alus=2, rob_entries=128,
                 int_queue_slots=16, lsu_slots=16, brob_entries=32,
-                program=program3, thread_id=0,
+                program=program1, thread_id=0,
                 konata_signature=KonataSignatureInst)
 # PEInst1 = pe.PE(fetch_width=2, physical_registers=64, int_alus=2, rob_entries=128,
 #                 int_queue_slots=16, lsu_slots=16, brob_entries=32,
