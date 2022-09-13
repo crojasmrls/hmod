@@ -21,8 +21,9 @@ class BasicInstrBlock:
 
 class InstrCache(sim.Component):
     """docstring for InstrCache"""
-    def setup(self, program, resources, thread_id, konata_signature):
+    def setup(self, program, params, resources, thread_id, konata_signature):
         self.program = program
+        self.params = params
         self.bb_dict = {}
         self.first_block = 'END'
         self.offset = 0
@@ -77,9 +78,8 @@ class InstrCache(sim.Component):
     def create_instr(self, bb_name, offset):
         self.instr_id += 1
         new_instr = instr.Instr(instruction=self.bb_dict[bb_name].instr[offset][0],
-                                line_number=self.bb_dict[bb_name].instr[offset][1],
-                                resources=self.resources, thread_id=self.thread_id,
-                                instr_id=self.instr_id,
+                                line_number=self.bb_dict[bb_name].instr[offset][1], params=self.params,
+                                resources=self.resources,  thread_id=self.thread_id, instr_id=self.instr_id,
                                 konata_signature=self.konata_signature, fetch_unit=self)
         self.konata_signature.new_instr(self.thread_id, self.instr_id, self.bb_dict[bb_name].instr[offset][1],
                                         self.bb_dict[bb_name].instr[offset][0])

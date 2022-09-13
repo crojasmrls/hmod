@@ -90,21 +90,21 @@ class InstructionTable:
     # Table of tuples
     Instructions = \
         {
-            # INT  Instruction         destination  n_sources immediate     pipelined latency computation
-            'add': (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_add),
-            'addi':(InstrLabel.INT,    True,        1,        True,         True,     1,      exec_add),
-            'li':  (InstrLabel.INT,    True,        0,        True,         True,     1,      exec_add),
-            'sll': (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_sll),
-            'slt': (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_slt),
-            'nop': (InstrLabel.INT,    False,       0,        False,        True,     1,      exec_add),
+            # INT   Instruction         destination  n_sources immediate     pipelined latency computation
+            'add':  (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_add),
+            'addi': (InstrLabel.INT,    True,        1,        True,         True,     1,      exec_add),
+            'li':   (InstrLabel.INT,    True,        0,        True,         True,     1,      exec_add),
+            'sll':  (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_sll),
+            'slt':  (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_slt),
+            'nop':  (InstrLabel.INT,    False,       0,        False,        True,     1,      exec_add),
             # MEM  Instruction         destination  n_sources immediate     pipelined latency computation width
-            'sd':  (InstrLabel.STORE,  False,       1,        True,         True,     1,      exec_addr,   64),
-            'ld':  (InstrLabel.LOAD,   True,        1,        True,         True,     1,      exec_addr,   64),
+            'sd':   (InstrLabel.STORE,  False,       1,        True,         True,     1,      exec_addr,   64),
+            'ld':   (InstrLabel.LOAD,   True,        1,        True,         True,     1,      exec_addr,   64),
             # Branch Instruction       destination  n_sources immediate     pipelined latency computation width
-            'bne': (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_nequ),
-            'beq': (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_equ),
+            'bne':  (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_nequ),
+            'beq':  (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_equ),
             # HILAR
-            'new': (InstrLabel.HILAR, True)}
+            'new':  (InstrLabel.HILAR, True)}
 
 # # Not used
 

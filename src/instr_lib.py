@@ -4,10 +4,11 @@ from reg_file_lib import PhysicalRegister
 
 
 class Instr(sim.Component):
-    def setup(self, instruction, line_number, resources, konata_signature, thread_id, instr_id, fetch_unit):
+    def setup(self, instruction, line_number, params, resources, konata_signature, thread_id, instr_id, fetch_unit):
         # Instruction String
         self.instruction = instruction
         self.line_number = line_number
+        self.params = params
         # Resources pointer
         self.resources = resources
         self.fetch_unit = fetch_unit
@@ -71,6 +72,24 @@ class Instr(sim.Component):
                 self.release(self.resources.int_units, 1)
             self.release(self.resources.int_queue)
             self.konata_signature.print_stage('EXE', 'CMP', self.thread_id, self.instr_id)
+        # Branch datapath
+        if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
+            yield self.request(self.resources.int_queue)
+            self.resources.decode_state.set(True)
+            yield self.hold(1)  # Hold for renaming stage
+            self.konata_signature.print_stage('RNM', 'DIS', self.thread_id, self.instr_id)
+            yield self.hold(1)
+            self.konata_signature.print_stage('DIS', 'ALL', self.thread_id, self.instr_id)
+            yield self.hold(1)
+            self.konata_signature.print_stage('ALL', 'QUE', self.thread_id, self.instr_id)
+            for x in self.p_sources:
+                yield self.wait(x.reg_state)
+            self.konata_signature.print_stage('QUE', 'WUP', self.thread_id, self.instr_id)
+            yield self.request(self.resources.branch_units)
+            if self.params.branch_in_int_alu:
+                yield self.request(self.resources.int_units)
+            self.konata_signature.print_stage('WUP', 'ISS', self.thread_id, self.instr_id)
+            yield self.hold(1)  # Hold for issue stage
         # LSU datapath
         elif self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD \
                 or self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
