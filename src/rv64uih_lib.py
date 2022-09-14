@@ -47,46 +47,33 @@ class InstructionTable:
     def exec_add(instr):
         if instr.instr_touple[INTFields.IMMEDIATE]:
             if len(instr.sources) >= 1:
-                instr.p_dest.value = \
-                    instr.resources.RegisterFileInst.get_reg(instr.sources[0]).value + \
-                    instr.immediate
+                instr.p_dest.value = instr.p_sources[0].value + instr.immediate
             else:
                 instr.p_dest.value = instr.immediate
         elif len(instr.sources) == 2:
-            instr.p_dest.value = \
-                instr.resources.RegisterFileInst.get_reg(instr.sources[0]).value + \
-                instr.resources.RegisterFileInst.get_reg(instr.sources[1]).value
+            instr.p_dest.value = instr.p_sourcess[0].value + instr.p_sources[1].value
 
     def exec_sll(instr):
         instr.p_dest.value = \
-            instr.resources.RegisterFileInst.get_reg(instr.sources[0]).value << \
-            instr.resources.RegisterFileInst.get_reg(instr.sources[1]).value & 0x1f
+            instr.p_sources[0].value << instr.p_sources[1].value & 0x1f
 
     def exec_slt(instr):
-        if instr.resources.RegisterFileInst.get_reg(instr.sources[0]).value < \
-                instr.resources.RegisterFileInst.get_reg(instr.sources[1]).value:
+        if instr.p_sources[0].value < instr.p_sources[1].value:
             instr.p_dest.value = 1
         else:
             instr.p_dest.value = 0
 
     def exec_addr(instr):
-        if instr.instr_touple[INTFields.IMMEDIATE]:
-            if len(instr.sources) >= 1:
-                instr.address.value = \
-                    instr.resources.RegisterFileInst.get_reg(instr.sources[0]).value + \
-                    instr.immediate
-            else:
-                instr.address.value = instr.immediate
+        if instr.instr_touple[INTFields.LABEL] == InstrLabel.LOAD:
+            instr.address = instr.p_sources[0].value + instr.immediate
+        else:
+            instr.address = instr.p_sources[1].value + instr.immediate
 
     def exec_nequ(instr):
-        instr.branch_result = \
-            instr.resources.RegisterFileInst.get_reg(instr.sources[0]).value != \
-            instr.resources.RegisterFileInst.get_reg(instr.sources[1]).value
+        instr.branch_result = instr.p_sources[0].value != instr.p_sources[1].value
 
     def exec_equ(instr):
-        instr.branch_result = \
-            instr.resources.RegisterFileInst.get_reg(instr.sources[0]).value == \
-            instr.resources.RegisterFileInst.get_reg(instr.sources[1]).value
+        instr.branch_result = instr.p_sources[0].value == instr.p_sources[1].value
     # Table of tuples
     Instructions = \
         {
@@ -98,7 +85,7 @@ class InstructionTable:
             'slt':  (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_slt),
             'nop':  (InstrLabel.INT,    False,       0,        False,        True,     1,      exec_add),
             # MEM  Instruction         destination  n_sources immediate     pipelined latency computation width
-            'sd':   (InstrLabel.STORE,  False,       1,        True,         True,     1,      exec_addr,   64),
+            'sd':   (InstrLabel.STORE,  False,       2,        True,         True,     1,      exec_addr,   64),
             'ld':   (InstrLabel.LOAD,   True,        1,        True,         True,     1,      exec_addr,   64),
             # Branch Instruction       destination  n_sources immediate     pipelined latency computation width
             'bne':  (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_nequ),

@@ -105,13 +105,12 @@ class Instr(sim.Component):
             while self.resources.RobInst.instr_end(self):
                 yield self.hold(1)
             self.konata_signature.print_stage('RRE', 'MEM', self.thread_id, self.instr_id)
+            self.compute()
             if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD:
-                address = self.p_sources[0].value + self.immediate
-                self.p_dest.value = self.resources.DataCacheInst.dc_load(address)
+                self.p_dest.value = self.resources.DataCacheInst.dc_load(self.address)
                 self.p_dest.reg_state.set(True)
             else:
-                address = self.p_sources[1].value + self.immediate
-                self.resources.DataCacheInst.dc_store(address, self.p_sources[0].value)
+                self.resources.DataCacheInst.dc_store(self.address, self.p_sources[0].value)
             yield self.hold(3)
             self.konata_signature.print_stage('MEM', 'CMP', self.thread_id, self.instr_id)
         yield self.hold(1)  # WB cycle
