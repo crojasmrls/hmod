@@ -199,5 +199,15 @@ class Instr(sim.Component):
             except:
                 print("NameError: Invalid source register")
                 raise
+        # Bracnch fields
+        if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
+            for x in range(self.instr_touple[dec.INTFields.N_SOURCES]):
+                try:
+                    self.sources.append(dec.IntRegisterTable.registers[parsed_instr.pop(0)])
+                except:
+                    print("NameError: Invalid source register")
+                    raise
+            self.branch_target =  parsed_instr.pop(0)
+
         self.p_sources = [self.resources.RegisterFileInst.get_reg(x) for x in self.sources]
 
