@@ -13,4 +13,4 @@ class PE:
         self.ResInst = res.Resources(params=self.params)
         # Instr cache + fetch engine
         self.InstrCacheInst = fetch.InstrCache(program=program, params=params, resources=self.ResInst, thread_id=self.thread_id,
-            konata_signature=self.konata_signature)
+            konata_signature=self.konata_signature, priority=100)

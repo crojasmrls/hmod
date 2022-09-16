@@ -51,7 +51,7 @@ class InstrCache(sim.Component):
             if line.find(':') != -1:
                 instr_count = 0
                 # Remove the code segment tag indicator
-                bb_name = line.split(':')[0]
+                bb_name = line.split(':')[0].split()[0]
                 if len(bb_name) != 0:
                     if len(self.bb_dict) > 0:
                         self.bb_dict[bb_name_prev].set_next_block(bb_name)
@@ -80,7 +80,7 @@ class InstrCache(sim.Component):
         new_instr = instr.Instr(instruction=self.bb_dict[bb_name].instr[offset][0],
                                 line_number=self.bb_dict[bb_name].instr[offset][1], params=self.params,
                                 resources=self.resources,  thread_id=self.thread_id, instr_id=self.instr_id,
-                                konata_signature=self.konata_signature, fetch_unit=self)
+                                konata_signature=self.konata_signature, fetch_unit=self, priority=0)
         self.konata_signature.new_instr(self.thread_id, self.instr_id, self.bb_dict[bb_name].instr[offset][1],
                                         self.bb_dict[bb_name].instr[offset][0])
         self.next_inst = self.bb_dict[bb_name].instr[offset]
@@ -99,9 +99,9 @@ class InstrCache(sim.Component):
     def process(self):
         while self.bb_name != 'END' or self.resources.RobInst.count_inst != 0:
             yield self.request(self.resources.fetch_resource)
-            if not self.take_branch:
-                # self.offset = self.offset + 1
-                pass
+            if self.resources.take_branch:
+                self.offset = self.offset = 0
+                self.bb_name = self.resources.branch_target
             else:
                 pass
             if self.bb_name == 'END':

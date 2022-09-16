@@ -18,6 +18,7 @@ class Instr(sim.Component):
         # Decoded Fields
         self.sources = []
         self.p_sources = []
+        self.branch_result = False
         self.set_fields()
 
     def process(self):
@@ -90,6 +91,19 @@ class Instr(sim.Component):
                 yield self.request(self.resources.int_units)
             self.konata_signature.print_stage('WUP', 'ISS', self.thread_id, self.instr_id)
             yield self.hold(1)  # Hold for issue stage
+            self.release((self.resources.branch_units, 1))
+            if self.params.branch_in_int_alu:
+                self.release((self.resources.int_units, 1))
+            self.konata_signature.print_stage('ISS', 'RRE', self.thread_id, self.instr_id)
+            yield self.hold(1)  # Hold for rre stage
+            self.konata_signature.print_stage('RRE', 'EXE', self.thread_id, self.instr_id)
+            self.compute()
+            yield self.hold(1)
+            yield self.hold(self.instr_touple[dec.INTFields.LATENCY]-1)  # Latency - 1
+            self.release(self.resources.int_queue)
+            self.konata_signature.print_stage('EXE', 'CMP', self.thread_id, self.instr_id)
+            self.resources.take_branch = self.branch_result
+            self.resources.branch_target = self.branch_target
         # LSU datapath
         elif self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD \
                 or self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
