@@ -102,8 +102,8 @@ class Instr(sim.Component):
             yield self.hold(self.instr_touple[dec.INTFields.LATENCY]-1)  # Latency - 1
             self.release(self.resources.int_queue)
             self.konata_signature.print_stage('EXE', 'CMP', self.thread_id, self.instr_id)
-            self.resources.take_branch = self.branch_result
-            self.resources.branch_target = self.branch_target
+            self.resources.take_branch.append(self.branch_result)
+            self.resources.branch_target.append(self.branch_target)
         # LSU datapath
         elif self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD \
                 or self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:

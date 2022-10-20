@@ -24,5 +24,5 @@ class Resources:
         # states
         self.decode_state = sim.State("decode_ready", value=True)
         self.finished = False
-        self.take_branch = False
-        self.branch_target = 'MAIN:'
+        self.take_branch = []
+        self.branch_target = []

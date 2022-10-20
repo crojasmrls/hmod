@@ -29,7 +29,7 @@ class InstrCache(sim.Component):
         self.offset = 0
         self.bb_name = 'main'
         self.branch_taken = False
-        self.take_branch = False
+        # self.take_branch = False
         self.resources = resources
         self.thread_id = thread_id
         self.konata_signature = konata_signature
@@ -99,9 +99,10 @@ class InstrCache(sim.Component):
     def process(self):
         while self.bb_name != 'END' or self.resources.RobInst.count_inst != 0:
             yield self.request(self.resources.fetch_resource)
-            if self.resources.take_branch:
-                self.offset = self.offset = 0
-                self.bb_name = self.resources.branch_target
+            if len(self.resources.take_branch) != 0:
+                if self.resources.take_branch.pop(0):
+                    self.offset = self.offset = 0
+                    self.bb_name = self.resources.branch_target.pop(0)
             else:
                 pass
             if self.bb_name == 'END':
