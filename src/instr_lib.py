@@ -75,6 +75,7 @@ class Instr(sim.Component):
             self.konata_signature.print_stage('EXE', 'CMP', self.thread_id, self.instr_id)
         # Branch datapath
         if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
+            self.resources.RegisterFileInst.push_rat(self.instr_id)
             yield self.request(self.resources.int_queue)
             self.resources.decode_state.set(True)
             yield self.hold(1)  # Hold for renaming stage
@@ -104,6 +105,8 @@ class Instr(sim.Component):
             self.konata_signature.print_stage('EXE', 'CMP', self.thread_id, self.instr_id)
             self.resources.take_branch.append(self.branch_result)
             self.resources.branch_target.append(self.branch_target)
+            if self.branch_result:
+                self.recovery()
         # LSU datapath
         elif self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD \
                 or self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
@@ -151,8 +154,9 @@ class Instr(sim.Component):
             # elf.fetch_unit_
         # liberar la unidad
 
-    def flush(self):
-        self.resources.RobInst.instr_end()
+    def recovery(self):
+        self.resources.RegisterFileInst.recovery_rat(self.instr_id)
+        self.resources.RobInst.recovery_rob(self.instr_id)
 
     def compute(self):
         self.instr_touple[dec.INTFields.EXEC](self)

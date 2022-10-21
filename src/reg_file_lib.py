@@ -13,12 +13,12 @@ class RegFile:
     def get_reg(self, arch_reg):
         return self.rat[arch_reg]
 
-    def push_rat(self, rob_entry):
-        self.rat_stack.append((self.rat, rob_entry))
+    def push_rat(self, instr_id):
+        self.rat_stack.append((self.rat, instr_id))
 
-    def recover_rat(self, rob_entry):
+    def recovery_rat(self, instr_id):
         shadow_rat = self.rat_stack.pop()
-        while shadow_rat[1] != rob_entry:
+        while shadow_rat[1] != instr_id:
             shadow_rat = self.rat_stack.pop()
         self.rat = shadow_rat[0]
 

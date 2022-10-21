@@ -26,4 +26,4 @@ PEInst0.InstrCacheInst.read_program()
 # PEInst1.InstrCacheInst.read_program()
 
 
-env.run(till=500)
+env.run(till=5000)

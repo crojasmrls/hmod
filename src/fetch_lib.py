@@ -81,10 +81,11 @@ class InstrCache(sim.Component):
                                 line_number=self.bb_dict[bb_name].instr[offset][1], params=self.params,
                                 resources=self.resources,  thread_id=self.thread_id, instr_id=self.instr_id,
                                 konata_signature=self.konata_signature, fetch_unit=self, priority=0)
+        self.resources.RobInst.add_instr(new_instr, self.instr_id)
         self.konata_signature.new_instr(self.thread_id, self.instr_id, self.bb_dict[bb_name].instr[offset][1],
                                         self.bb_dict[bb_name].instr[offset][0])
         self.next_inst = self.bb_dict[bb_name].instr[offset]
-        self.resources.RobInst.add_instr(new_instr)
+
 
     def change_pc(self, bb_name_branch):
         self.branch_taken = True
