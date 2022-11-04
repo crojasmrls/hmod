@@ -14,13 +14,13 @@ class RegFile:
         return self.rat[arch_reg]
 
     def push_rat(self, instr_id):
-        self.rat_stack.append((self.rat, instr_id))
+        self.rat_stack.append((self.rat.copy(), instr_id))
 
     def recovery_rat(self, instr_id):
         shadow_rat = self.rat_stack.pop()
         while shadow_rat[1] != instr_id:
             shadow_rat = self.rat_stack.pop()
-        self.rat = shadow_rat[0]
+        self.rat = shadow_rat[0].copy()
 
 
 class PhysicalRegister:
