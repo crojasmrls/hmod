@@ -19,6 +19,7 @@ class Instr(sim.Component):
         self.sources = []
         self.p_sources = []
         self.branch_result = False
+        self.flushed = False
         self.set_fields()
 
     def process(self):
@@ -119,7 +120,7 @@ class Instr(sim.Component):
             yield self.hold(1)
             # self.enter(self.resources.LoadStoreQueueInst.entries)
             #  Waiting for commit
-            while self.resources.RobInst.instr_end(self):
+            while self.resources.RobInst.instr_end(self.instr_id):
                 yield self.hold(1)
             self.konata_signature.print_stage('RRE', 'MEM', self.thread_id, self.instr_id)
             self.compute()
@@ -131,14 +132,14 @@ class Instr(sim.Component):
             yield self.hold(3)
             self.konata_signature.print_stage('MEM', 'CMP', self.thread_id, self.instr_id)
         yield self.hold(1)  # WB cycle
-        while self.resources.RobInst.instr_end(self):
+        while self.resources.RobInst.instr_end(self.instr_id):
             yield self.hold(1)
     # Commit
         self.konata_signature.print_stage('CMP', 'COM', self.thread_id, self.instr_id)
         self.resources.RobInst.release_instr()
         self.fetch_unit.release_rob()
         yield self.hold(1)
-        if self.resources.finished and (self.resources.RobInst.count_inst == 0):
+        if self.resources.finished and (self.resources.RobInst.rob_list == []):
             print('Program end')
         self.konata_signature.retire_instr(self.thread_id, self.instr_id, False)
         print('Instruction finished: ', self.instruction)
@@ -225,7 +226,8 @@ class Instr(sim.Component):
                 except:
                     print("NameError: Invalid source register")
                     raise
-            self.branch_target =  parsed_instr.pop(0)
+            self.branch_target = parsed_instr.pop(0)
 
         self.p_sources = [self.resources.RegisterFileInst.get_reg(x) for x in self.sources]
+
 

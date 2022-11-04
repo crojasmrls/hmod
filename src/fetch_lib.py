@@ -104,6 +104,8 @@ class InstrCache(sim.Component):
                 if self.resources.take_branch.pop(0):
                     self.offset = self.offset = 0
                     self.bb_name = self.resources.branch_target.pop(0)
+                else:
+                    self.resources.branch_target.pop(0)
             else:
                 pass
             if self.bb_name == 'END':
