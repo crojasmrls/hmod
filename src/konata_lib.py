@@ -4,17 +4,19 @@ import salabim as sim
 class KonataSignature(sim.Component):
     def setup(self, konata_out, konata_dump_on):
         self.konata_out = konata_out
-        self.f = open('../' + self.konata_out, 'w')
         self.konata_dump_on = konata_dump_on
+        if self.konata_dump_on:
+            self.f = open('../' + self.konata_out, 'w')
         self.cycle_count = 0
         self.konata_id_count = 0
         self.konata_ids = {}
 
     def process(self):
-        self.f.write('Kanata\t0004\n')
-        while True:
-            self.cycle_count += 1
-            yield self.hold(1)
+        if self.konata_dump_on:
+            self.f.write('Kanata\t0004\n')
+            while True:
+                self.cycle_count += 1
+                yield self.hold(1)
 
     def print_cycle(self):
         self.f.write('C\t' + str(self.cycle_count) + '\n')
