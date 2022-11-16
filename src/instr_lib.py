@@ -158,10 +158,15 @@ class Instr(sim.Component):
     def recovery(self):
         self.resources.RegisterFileInst.recovery_rat(self.instr_id)
         self.resources.RobInst.recovery_rob(self.instr_id)
+        if self.resources.finished:
+            self.resources.finished = False
+        if self.fetch_unit.ispassive():
+            self.fetch_unit.bb_name = self.fetch_unit.send_first_bb()
+            self.fetch_unit.offset = 0
+            self.fetch_unit.activate()
 
     def compute(self):
         self.instr_touple[dec.INTFields.EXEC](self)
-
         # set the execution value
         # calculate the result
 
@@ -229,5 +234,3 @@ class Instr(sim.Component):
             self.branch_target = parsed_instr.pop(0)
 
         self.p_sources = [self.resources.RegisterFileInst.get_reg(x) for x in self.sources]
-
-

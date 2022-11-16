@@ -7,6 +7,7 @@ class BasicInstrBlock:
     def __init__(self, name):
         self.name = name
         self.next_block = 'END'
+        # Basic block instruction list
         self.instr = []
 
     def add_instr(self, new_instr):
@@ -98,6 +99,8 @@ class InstrCache(sim.Component):
         self.release((self.resources.fetch_resource, 1))
 
     def process(self):
+        # Condition to end fetch process, if the bb_name pointer reach END and the ROB is empty the fetch process
+        # is terminated
         while self.bb_name != 'END' or self.resources.RobInst.count_inst != 0:
             yield self.request(self.resources.fetch_resource)
             if len(self.resources.take_branch) != 0:
@@ -106,21 +109,23 @@ class InstrCache(sim.Component):
                     self.bb_name = self.resources.branch_target.pop(0)
                 else:
                     self.resources.branch_target.pop(0)
-            else:
-                pass
+            # If fetch process reach end of file passivate it
             if self.bb_name == 'END':
                 self.resources.finished = True
                 yield self.passivate()
             else:
+                # Wait for stalls in front end
                 yield self.wait(self.resources.decode_state)
                 yield self.request(self.resources.RobInst.rob_resource)
+                # Create new instruction
                 self.create_instr(self.bb_name, self.offset)
-                # self.next_inst = self.send_instr(self.bb_name, self.offset)
+            # Condition to advance to next basic block
             if self.offset == len(self.bb_dict[self.bb_name].instr) - 1:
-
                 self.bb_name = self.bb_dict[self.bb_name].next_block
                 self.offset = 0
+                # Check if the basic block is empty
                 while len(self.bb_dict[self.bb_name].instr) == 0:
+                    # If fetch process reach end of file passivate it
                     if self.bb_name == 'END':
                         self.resources.finished = True
                         yield self.passivate()
