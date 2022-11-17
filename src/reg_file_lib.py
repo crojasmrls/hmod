@@ -22,6 +22,12 @@ class RegFile:
             shadow_rat = self.rat_stack.pop()
         self.rat = shadow_rat[0].copy()
 
+    def release_shadow_rat(self, instr_id):
+        for shadow_rat in self.rat_stack:
+            if shadow_rat[1] == instr_id:
+                self.rat_stack.remove(shadow_rat)
+                break
+
 
 class PhysicalRegister:
     def __init__(self, state=False, value=0):

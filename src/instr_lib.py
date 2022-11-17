@@ -72,7 +72,7 @@ class Instr(sim.Component):
                 if self.instr_touple[dec.INTFields.DEST]:  # Set executed bit
                     self.p_dest.reg_state.set(True)
                 self.release(self.resources.int_units, 1)
-            self.release(self.resources.int_queue)
+            self.release((self.resources.int_queue, 1))
             self.konata_signature.print_stage('EXE', 'CMP', self.thread_id, self.instr_id)
         # Branch datapath
         if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
@@ -102,12 +102,14 @@ class Instr(sim.Component):
             self.compute()
             yield self.hold(1)
             yield self.hold(self.instr_touple[dec.INTFields.LATENCY]-1)  # Latency - 1
-            self.release(self.resources.int_queue)
+            self.release((self.resources.int_queue, 1))
             self.konata_signature.print_stage('EXE', 'CMP', self.thread_id, self.instr_id)
             self.resources.take_branch.append(self.branch_result)
             self.resources.branch_target.append(self.branch_target)
             if self.branch_result:
                 self.recovery()
+            if self.params.exe_brob_release:
+                self.resources.RegisterFileInst.release_shadow_rat(self.instr_id)
         # LSU datapath
         elif self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD \
                 or self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
@@ -138,6 +140,9 @@ class Instr(sim.Component):
         self.konata_signature.print_stage('CMP', 'COM', self.thread_id, self.instr_id)
         self.resources.RobInst.release_instr()
         self.fetch_unit.release_rob()
+        # Remove RAT shadow copy when is a branch
+        if not self.params.exe_brob_release and self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
+            self.resources.RegisterFileInst.release_shadow_rat(self.instr_id)
         yield self.hold(1)
         if self.resources.finished and (self.resources.RobInst.rob_list == []):
             print('Program end')
