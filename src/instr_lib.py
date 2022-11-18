@@ -38,6 +38,16 @@ class Instr(sim.Component):
             self.p_dest = PhysicalRegister(state=False, value=self.dest)
             self.p_old_dest = self.resources.RegisterFileInst.get_reg(self.dest)
             self.resources.RegisterFileInst.set_reg(self.dest, self.p_dest)
+        # Do rename
+        # Consider rename done by an older instruction
+            for src in self.sources:
+                if src == self.dest:
+                    self.p_sources.append(self.p_old_dest)
+                else:
+                    self.p_sources.append(self.resources.RegisterFileInst.get_reg(src))
+        else:
+            self.p_sources = [self.resources.RegisterFileInst.get_reg(src) for src in self.sources]
+
         if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.INT:
             yield self.request(self.resources.int_queue)
         #   self.enter(self.int_queue)
@@ -138,6 +148,8 @@ class Instr(sim.Component):
             yield self.hold(1)
     # Commit
         self.konata_signature.print_stage('CMP', 'COM', self.thread_id, self.instr_id)
+        for resource in self.claimed_resources():
+            self.release((resource, 1))
         self.resources.RobInst.release_instr()
         self.fetch_unit.release_rob()
         # Remove RAT shadow copy when is a branch
@@ -237,5 +249,3 @@ class Instr(sim.Component):
                     print("NameError: Invalid source register")
                     raise
             self.branch_target = parsed_instr.pop(0)
-
-        self.p_sources = [self.resources.RegisterFileInst.get_reg(x) for x in self.sources]
