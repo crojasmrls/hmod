@@ -23,7 +23,6 @@ class Instr(sim.Component):
         self.set_fields()
 
     def process(self):
-        print(self.instruction)
         self.state = 'DEC'
         yield self.hold(1)  # Decode
         self.konata_signature.print_stage('FET', self.state, self.thread_id, self.instr_id)
@@ -159,7 +158,6 @@ class Instr(sim.Component):
         if self.resources.finished and (self.resources.RobInst.rob_list == []):
             print('Program end')
         self.konata_signature.retire_instr(self.thread_id, self.instr_id, False)
-        print('Instruction finished: ', self.instruction)
 #        elif self.type == 'HILAR':
 #            # self.enter(self.h_queue)
 #            yield self.request(self.resources.h_units)
