@@ -4,10 +4,11 @@ class DataCache:
         self.mem = {}
 
     def dc_load(self, addr):
-        return self.mem.get(addr, 'Invalid Addres at rd operation')
+        return self.mem.get(addr, 'Invalid Address at rd operation')
 
     def dc_store(self, addr, data):
         self.mem[addr] = data
 
-
-
+    def print_data_cache(self):
+        for data in self.mem:
+            print(data)
