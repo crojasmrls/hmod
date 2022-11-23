@@ -20,6 +20,9 @@ class Instr(sim.Component):
         self.p_sources = []
         self.branch_result = False
         self.flushed = False
+        self.dest = None
+        self.address = None
+        self.data = None
         self.set_fields()
 
     def process(self):
@@ -70,6 +73,8 @@ class Instr(sim.Component):
             yield self.hold(1)  # Hold for rre stage
             self.konata_signature.print_stage('RRE', 'EXE', self.thread_id, self.instr_id)
             self.compute()
+            if self.instr_touple[dec.INTFields.DEST]:
+                self.data = self.p_dest.value
             if self.instr_touple[dec.INTFields.PIPELINED]:  # If operation is pipelined
                 yield self.hold(1)
                 yield self.hold(self.instr_touple[dec.INTFields.LATENCY]-1)  # Latency - 1
@@ -138,8 +143,10 @@ class Instr(sim.Component):
             if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD:
                 self.p_dest.value = self.resources.DataCacheInst.dc_load(self.address)
                 self.p_dest.reg_state.set(True)
+                self.data = self.p_dest.value
             else:
                 self.resources.DataCacheInst.dc_store(self.address, self.p_sources[0].value)
+                self.data = self.p_sources[0].value
             yield self.hold(3)
             self.konata_signature.print_stage('MEM', 'CMP', self.thread_id, self.instr_id)
         yield self.hold(1)  # WB cycle
@@ -147,6 +154,8 @@ class Instr(sim.Component):
             yield self.hold(1)
     # Commit
         self.konata_signature.print_stage('CMP', 'COM', self.thread_id, self.instr_id)
+        self.konata_signature.print_torture(self.thread_id, self.instr_id, self.instruction, self.dest, self.data,
+                                            self.address)
         for resource in self.claimed_resources():
             self.release((resource, 1))
         self.resources.RobInst.release_instr()

@@ -10,13 +10,15 @@ program1 = 'risc-assembly/stores.asm'
 program2 = 'risc-assembly/add.asm'
 program3 = 'risc-assembly/bublesort.asm'
 konata_out = 'konata_signature.txt'
+torture_out = 'torture_signature.sig'
 cycles = 5000
 konata_dump_on = True
+torture_dump_on = True
 params_1 = par1.PipelineParams
 env = sim.Environment(trace=False)
 #
-KonataSignatureInst = kon.KonataSignature(konata_out=konata_out,
-                                          konata_dump_on=konata_dump_on, priority=-2)
+KonataSignatureInst = kon.KonataSignature(konata_out=konata_out, konata_dump_on=konata_dump_on,
+                                          torture_out=torture_out, torture_dump_on=torture_dump_on, priority=-2)
 
 PEInst0 = pe.PE(params=params_1, program=program3, thread_id=0, konata_signature=KonataSignatureInst)
 # PEInst1 = pe.PE(fetch_width=2, physical_registers=64, int_alus=2, rob_entries=128,
@@ -35,7 +37,7 @@ end = time.time()
 print("Execution time: ", round(end-start, 2), "s")
 print("Cycles: ", cycles)
 print("Instructions: ", PEInst0.InstrCacheInst.instr_id)
-print("simulated cycles per second:",
+print("Simulated cycles per second:",
       round(cycles/(end-start), 2))
 print("Simulated instructions per second:",
       round(PEInst0.InstrCacheInst.instr_id/(end-start), 2))
