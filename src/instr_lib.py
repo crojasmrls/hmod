@@ -34,6 +34,7 @@ class Instr(sim.Component):
         self.konata_signature.print_stage('DEC', 'RNM', self.thread_id, self.instr_id)
         yield self.wait(self.resources.decode_state, urgent=True)
         self.resources.decode_state.set(False)
+        yield  self.request(self.resources.rename_resource)
         # Aritmethic Datapath
         if self.instr_touple[dec.INTFields.DEST]:
             yield self.request(self.resources.RegisterFileInst.FRL_resource)
@@ -55,6 +56,7 @@ class Instr(sim.Component):
         #   self.enter(self.int_queue)
             # If there is destination a physical register is requested and created
             self.resources.decode_state.set(True)
+            self.release((self.resources.rename_resource, 1))
             yield self.hold(1)  # Hold for renaming stage
             self.konata_signature.print_stage('RNM', 'DIS', self.thread_id, self.instr_id)
             yield self.hold(1)
@@ -93,6 +95,7 @@ class Instr(sim.Component):
             self.resources.RegisterFileInst.push_rat(self.instr_id)
             yield self.request(self.resources.int_queue)
             self.resources.decode_state.set(True)
+            self.release((self.resources.rename_resource, 1))
             yield self.hold(1)  # Hold for renaming stage
             self.konata_signature.print_stage('RNM', 'DIS', self.thread_id, self.instr_id)
             yield self.hold(1)
@@ -129,6 +132,7 @@ class Instr(sim.Component):
                 or self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
             yield self.request(self.resources.LoadStoreQueueInst.lsu_slots)
             self.resources.decode_state.set(True)
+            self.release((self.resources.rename_resource, 1))
             yield self.hold(1)  # Hold for dispatch stage
             self.konata_signature.print_stage('DEC', 'DIS', self.thread_id, self.instr_id)
             yield self.hold(1)  # Hold for dispatch stage
