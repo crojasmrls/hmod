@@ -82,7 +82,7 @@ class KonataSignature(sim.Component):
         else:
             raise TypeError("Instr id and thread id must be integer values!!")
 
-    def print_torture(self, thread_id, instr_id, instr, dest, data, address):
+    def print_torture(self, thread_id, instr_id, instr, dest, data, srcs, address):
         if type(instr_id) == int and type(thread_id) == int:
             if self.torture_dump_on:
                 try:
@@ -91,15 +91,18 @@ class KonataSignature(sim.Component):
                     print("thread_id="+str(thread_id)+" and instr_id=" + str(instr_id)
                           + " Are not in the konata_ids list!!\n")
                     raise
-                pc = 'k' + str(konata_id) + ''
+                pc = 'k' + str(konata_id) + ': '
                 self.ft.write('core    ' + str(thread_id) + ': ' + pc + instr + '\n')
-                out = " "
+                out = ""
                 if dest:
-                    out = out + "0x" + '{:02d}'.format(dest) + " " + str(data)
+                    out = out + " 0x" + '{:02d}'.format(dest) + ": " + str(data)
+                if srcs:
+                    for src in srcs:
+                        out = out + " 0x" + '{:02d}'.format(src[0]) + ": " + str(src[1])
                 if address:
-                    out = out + " " + str(address)
+                    out = out + " addr:" + str(address)
                 if data and not dest:
-                    out = out + " " + str(data)
-                self.ft.write('3 ' + pc + out + '\n')
+                    out = out + " data:" + str(data)
+                self.ft.write(pc + out + '\n')
         else:
             raise TypeError("Instr id and thread id must be integer values!!")
