@@ -36,21 +36,12 @@ class Instr(sim.Component):
         self.resources.decode_state.set(False)
         yield  self.request(self.resources.rename_resource)
         # Aritmethic Datapath
+        self.p_sources = [self.resources.RegisterFileInst.get_reg(src) for src in self.sources]
         if self.instr_touple[dec.INTFields.DEST]:
             yield self.request(self.resources.RegisterFileInst.FRL_resource)
             self.p_dest = PhysicalRegister(state=False, value=self.dest)
             self.p_old_dest = self.resources.RegisterFileInst.get_reg(self.dest)
             self.resources.RegisterFileInst.set_reg(self.dest, self.p_dest)
-        # Do rename
-        # Consider rename done by an older instruction
-            for src in self.sources:
-                if src == self.dest:
-                    self.p_sources.append(self.p_old_dest)
-                else:
-                    self.p_sources.append(self.resources.RegisterFileInst.get_reg(src))
-        else:
-            self.p_sources = [self.resources.RegisterFileInst.get_reg(src) for src in self.sources]
-
         if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.INT:
             yield self.request(self.resources.int_queue)
         #   self.enter(self.int_queue)
