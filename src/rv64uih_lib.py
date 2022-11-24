@@ -55,7 +55,7 @@ class InstructionTable:
 
     def exec_sll(instr):
         instr.p_dest.value = \
-            instr.p_sources[0].value << instr.p_sources[1].value & 0x1f
+            instr.p_sources[0].value << (instr.p_sources[1].value & 0x1f)
 
     def exec_slt(instr):
         if instr.p_sources[0].value < instr.p_sources[1].value:
