@@ -34,7 +34,7 @@ class Instr(sim.Component):
         self.konata_signature.print_stage('DEC', 'RNM', self.thread_id, self.instr_id)
         yield self.wait(self.resources.decode_state, urgent=True)
         self.resources.decode_state.set(False)
-        yield  self.request(self.resources.rename_resource)
+        yield self.request(self.resources.rename_resource)
         # Aritmethic Datapath
         self.p_sources = [self.resources.RegisterFileInst.get_reg(src) for src in self.sources]
         if self.instr_touple[dec.INTFields.DEST]:
@@ -112,8 +112,8 @@ class Instr(sim.Component):
             yield self.hold(self.instr_touple[dec.INTFields.LATENCY]-1)  # Latency - 1
             self.release((self.resources.int_queue, 1))
             self.konata_signature.print_stage('EXE', 'CMP', self.thread_id, self.instr_id)
-            self.resources.take_branch.append(self.branch_result)
-            self.resources.branch_target.append(self.branch_target)
+            self.resources.take_branch = [self.branch_result]
+            self.resources.branch_target = [self.branch_target]
             if self.branch_result:
                 self.recovery()
             if self.params.exe_brob_release:
