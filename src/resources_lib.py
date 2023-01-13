@@ -3,6 +3,7 @@ import reorderbuffer_lib as rob
 import reg_file_lib as rf
 import lsq_lib as lsq
 import data_cache_lib as dc
+import bp_lib as bp
 
 
 class Resources:
@@ -25,5 +26,9 @@ class Resources:
         # states
         self.decode_state = sim.State("decode_ready", value=True)
         self.finished = False
-        self.take_branch = []
+        # Branch Calculation queues
+        self.miss_branch = []
         self.branch_target = []
+        # Branch Predictor
+        if self.params.branch_predictor == 'bimodal_predictor':
+            self.branch_predictor = bp.BimodalPredictor()

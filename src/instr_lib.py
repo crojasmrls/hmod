@@ -4,7 +4,8 @@ from reg_file_lib import PhysicalRegister
 
 
 class Instr(sim.Component):
-    def setup(self, instruction, line_number, params, resources, konata_signature, thread_id, instr_id, fetch_unit):
+    def setup(self, instruction, line_number, params, resources, konata_signature, thread_id, instr_id, fetch_unit,
+              bb_name, offset, bp_take_branch, bp_tag_index):
         # Instruction String
         self.instruction = instruction
         self.line_number = line_number
@@ -15,6 +16,10 @@ class Instr(sim.Component):
         self.thread_id = thread_id
         self.instr_id = instr_id
         self.konata_signature = konata_signature
+        self.bb_name = bb_name
+        self.offset = offset
+        self.bp_take_branch = bp_take_branch
+        self.bp_tag_index = bp_tag_index
         # Decoded Fields
         self.sources = []
         self.p_sources = []
@@ -44,7 +49,7 @@ class Instr(sim.Component):
             self.resources.RegisterFileInst.set_reg(self.dest, self.p_dest)
         if self.instr_touple[dec.INTFields.LABEL] == dec.InstrLabel.INT:
             yield self.request(self.resources.int_queue)
-        #   self.enter(self.int_queue)
+            #   self.enter(self.int_queue)
             # If there is destination a physical register is requested and created
             self.resources.decode_state.set(True)
             self.release((self.resources.rename_resource, 1))
@@ -70,12 +75,12 @@ class Instr(sim.Component):
                 self.data = self.p_dest.value
             if self.instr_touple[dec.INTFields.PIPELINED]:  # If operation is pipelined
                 yield self.hold(1)
-                yield self.hold(self.instr_touple[dec.INTFields.LATENCY]-1)  # Latency - 1
+                yield self.hold(self.instr_touple[dec.INTFields.LATENCY] - 1)  # Latency - 1
                 if self.instr_touple[dec.INTFields.DEST]:  # Set executed bit
                     self.p_dest.reg_state.set(True)
             else:
                 yield self.hold(self.instr_touple[dec.INTFields.LATENCY])
-                yield self.hold(self.instr_touple[dec.INTFields.LATENCY]-1)  # Latency - 1
+                yield self.hold(self.instr_touple[dec.INTFields.LATENCY] - 1)  # Latency - 1
                 if self.instr_touple[dec.INTFields.DEST]:  # Set executed bit
                     self.p_dest.reg_state.set(True)
                 self.release(self.resources.int_units, 1)
@@ -109,12 +114,19 @@ class Instr(sim.Component):
             self.konata_signature.print_stage('RRE', 'EXE', self.thread_id, self.instr_id)
             self.compute()
             yield self.hold(1)
-            yield self.hold(self.instr_touple[dec.INTFields.LATENCY]-1)  # Latency - 1
+            yield self.hold(self.instr_touple[dec.INTFields.LATENCY] - 1)  # Latency - 1
             self.release((self.resources.int_queue, 1))
             self.konata_signature.print_stage('EXE', 'CMP', self.thread_id, self.instr_id)
-            self.resources.take_branch = [self.branch_result]
-            self.resources.branch_target = [self.branch_target]
-            if self.branch_result:
+            bp_hit = (not self.branch_result and not self.bp_take_branch[0]) \
+                     or (self.branch_result and self.bp_take_branch[0] and self.branch_target == self.bp_take_branch[1])
+            self.resources.branch_predictor.write_entry(self.bp_tag_index[0], self.bp_tag_index[1], bp_hit,
+                                                        self.branch_target)
+            if not bp_hit:
+                self.resources.miss_branch = [True]
+                if self.branch_result:
+                    self.resources.branch_target = [(self.branch_target, 0)]
+                else:
+                    self.resources.branch_target = [(self.bb_name, self.offset + 1)]
                 self.recovery()
             if self.params.exe_brob_release:
                 self.resources.RegisterFileInst.release_shadow_rat(self.instr_id)
@@ -147,7 +159,7 @@ class Instr(sim.Component):
         yield self.hold(1)  # WB cycle
         while self.resources.RobInst.instr_end(self.instr_id):
             yield self.hold(1)
-    # Commit
+        # Commit
         self.konata_signature.print_stage('CMP', 'COM', self.thread_id, self.instr_id)
         srcs = [(self.sources[i], self.p_sources[i].value) for i in range(0, len(self.sources))]
         self.konata_signature.print_torture(self.thread_id, self.instr_id, self.instruction, self.dest, self.data, srcs,
@@ -163,17 +175,18 @@ class Instr(sim.Component):
         if self.resources.finished and (self.resources.RobInst.rob_list == []):
             print('Program end')
         self.konata_signature.retire_instr(self.thread_id, self.instr_id, False)
-#        elif self.type == 'HILAR':
-#            # self.enter(self.h_queue)
-#            yield self.request(self.resources.h_units)
-#            self.resources.decode_state.set(True)
-#        self.state = 'enqued'
-#        yield self.passivate()
-#        if self.type == 'BRANCH' and self.miss_branch_prediction:
-            # self.fetch_unit.change_pc(self.correct_bb_name)
-            # flush pipeline
-            # elf.fetch_unit_
-        # liberar la unidad
+
+    #        elif self.type == 'HILAR':
+    #            # self.enter(self.h_queue)
+    #            yield self.request(self.resources.h_units)
+    #            self.resources.decode_state.set(True)
+    #        self.state = 'enqued'
+    #        yield self.passivate()
+    #        if self.type == 'BRANCH' and self.miss_branch_prediction:
+    # self.fetch_unit.change_pc(self.correct_bb_name)
+    # flush pipeline
+    # elf.fetch_unit_
+    # liberar la unidad
 
     def recovery(self):
         self.resources.RegisterFileInst.recovery_rat(self.instr_id)

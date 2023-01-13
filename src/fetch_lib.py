@@ -30,11 +30,11 @@ class InstrCache(sim.Component):
         self.offset = 0
         self.bb_name = 'main'
         self.branch_taken = False
-        # self.take_branch = False
         self.resources = resources
         self.thread_id = thread_id
         self.konata_signature = konata_signature
         self.instr_id = 0
+        self.bp_take_branch = False, None
         # watch(self.fetch_resource.claimed_quantity.value)
 
     def read_program(self):
@@ -76,21 +76,30 @@ class InstrCache(sim.Component):
     def send_first_bb(self):
         return self.first_block
 
-    def create_instr(self, bb_name, offset):
+    def create_instr(self):
         self.instr_id += 1
-        new_instr = instr.Instr(instruction=self.bb_dict[bb_name].instr[offset][0],
-                                line_number=self.bb_dict[bb_name].instr[offset][1], params=self.params,
+        if self.params.bp_enable:
+            bp_tag_index = self.bp_tag_index(self.bb_dict[self.bb_name].instr[self.offset][1], self.params.bp_entries)
+            self.bp_take_branch = self.resources.branch_predictor.read_entry(bp_tag_index[0], bp_tag_index[1])
+        else:
+            bp_tag_index = 0, 0
+            self.bp_take_branch = False, None
+        new_instr = instr.Instr(instruction=self.bb_dict[self.bb_name].instr[self.offset][0],
+                                line_number=self.bb_dict[self.bb_name].instr[self.offset][1], params=self.params,
                                 resources=self.resources,  thread_id=self.thread_id, instr_id=self.instr_id,
-                                konata_signature=self.konata_signature, fetch_unit=self, priority=0)
+                                konata_signature=self.konata_signature, fetch_unit=self, bb_name=self.bb_name,
+                                offset=self.offset, bp_take_branch=self.bp_take_branch, bp_tag_index=bp_tag_index,
+                                priority=0)
         self.resources.RobInst.add_instr(new_instr, self.instr_id)
-        self.konata_signature.new_instr(self.thread_id, self.instr_id, self.bb_dict[bb_name].instr[offset][1],
-                                        self.bb_dict[bb_name].instr[offset][0])
-        self.next_inst = self.bb_dict[bb_name].instr[offset]
+        self.konata_signature.new_instr(self.thread_id, self.instr_id, self.bb_dict[self.bb_name].instr[self.offset][1],
+                                        self.bb_dict[self.bb_name].instr[self.offset][0])
 
-
-    def change_pc(self, bb_name_branch):
-        self.branch_taken = True
-        yield from self.create_instr(self.bb_name, self.offset)
+    @staticmethod
+    def bp_tag_index(line_number, bp_entries):
+        index_bits = bp_entries.bit_length() - 1
+        tag = line_number >> index_bits
+        index = line_number % bp_entries
+        return tag, index
 
     def release_rob(self):
         self.release((self.resources.RobInst.rob_resource, 1))
@@ -103,10 +112,11 @@ class InstrCache(sim.Component):
         # is terminated
         while self.bb_name != 'END' or self.resources.RobInst.count_inst != 0:
             yield self.request(self.resources.fetch_resource)
-            if len(self.resources.take_branch) != 0:
-                if self.resources.take_branch.pop(0):
-                    self.offset = self.offset = 0
-                    self.bb_name = self.resources.branch_target.pop(0)
+            if len(self.resources.miss_branch) != 0:
+                if self.resources.miss_branch.pop(0):
+                    branch_target = self.resources.branch_target.pop(0)
+                    self.bb_name = branch_target[0]
+                    self.offset = branch_target[1]
                 else:
                     self.resources.branch_target.pop(0)
             # If fetch process reach end of file passivate it
@@ -118,18 +128,22 @@ class InstrCache(sim.Component):
                 yield self.wait(self.resources.decode_state)
                 yield self.request(self.resources.RobInst.rob_resource)
                 # Create new instruction
-                self.create_instr(self.bb_name, self.offset)
+                self.create_instr()
             # Condition to advance to next basic block
-            if self.offset == len(self.bb_dict[self.bb_name].instr) - 1:
-                self.bb_name = self.bb_dict[self.bb_name].next_block
+            if self.bp_take_branch[0]:
+                self.bb_name = self.bp_take_branch[1]
                 self.offset = 0
-                # Check if the basic block is empty
-                while len(self.bb_dict[self.bb_name].instr) == 0:
-                    # If fetch process reach end of file passivate it
-                    if self.bb_name == 'END':
-                        self.resources.finished = True
-                        yield self.passivate()
-                    self.bb_name = self.bb_dict[self.bb_name].next_block
             else:
-                self.offset = self.offset + 1
+                if self.offset == len(self.bb_dict[self.bb_name].instr) - 1:
+                    self.bb_name = self.bb_dict[self.bb_name].next_block
+                    self.offset = 0
+                    # Check if the basic block is empty
+                    while len(self.bb_dict[self.bb_name].instr) == 0:
+                        # If fetch process reach end of file passivate it
+                        if self.bb_name == 'END':
+                            self.resources.finished = True
+                            yield self.passivate()
+                        self.bb_name = self.bb_dict[self.bb_name].next_block
+                else:
+                    self.offset = self.offset + 1
             # yield self.hold(1)

@@ -9,3 +9,6 @@ class PipelineParams:
     brob_entries = 32
     branch_in_int_alu = True
     exe_brob_release = True
+    bp_enable = True
+    branch_predictor = 'bimodal_predictor'
+    bp_entries = 1024
