@@ -163,7 +163,7 @@ class Instr(sim.Component):
         # Commit
         self.konata_signature.print_stage('CMP', 'COM', self.thread_id, self.instr_id)
         srcs = [(self.sources[i], self.p_sources[i].value) for i in range(0, len(self.sources))]
-        self.konata_signature.print_torture(self.thread_id, self.instr_id, self.instruction, self.dest, self.data, srcs,
+        self.konata_signature.print_torture(self.thread_id, self.instr_id, self.line_number, self.instruction, self.dest, self.data, srcs,
                                             self.address)
         for resource in self.claimed_resources():
             self.release((resource, 1))
