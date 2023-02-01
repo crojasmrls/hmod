@@ -35,6 +35,7 @@ class InstrCache(sim.Component):
         self.konata_signature = konata_signature
         self.instr_id = 0
         self.bp_take_branch = False, None
+        self.flushed = False
         # watch(self.fetch_resource.claimed_quantity.value)
 
     def read_program(self):
@@ -113,6 +114,7 @@ class InstrCache(sim.Component):
         while self.bb_name != 'END' or self.resources.RobInst.count_inst != 0:
             yield self.request(self.resources.fetch_resource)
             if len(self.resources.miss_branch) != 0:
+                self.flushed = False
                 if self.resources.miss_branch.pop(0):
                     branch_target = self.resources.branch_target.pop(0)
                     self.bb_name = branch_target[0]
@@ -128,7 +130,12 @@ class InstrCache(sim.Component):
                 yield self.wait(self.resources.decode_state)
                 yield self.request(self.resources.RobInst.rob_resource)
                 # Create new instruction
-                self.create_instr()
+                if self.flushed:
+                    self.flushed = False
+                    self.release_fetch()
+                    self.release_rob()
+                else:
+                    self.create_instr()
             # Condition to advance to next basic block
             if self.bp_take_branch[0]:
                 self.bb_name = self.bp_take_branch[1]

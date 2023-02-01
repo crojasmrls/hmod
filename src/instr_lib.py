@@ -123,6 +123,7 @@ class Instr(sim.Component):
                                                         self.branch_target)
             if not bp_hit:
                 self.resources.miss_branch = [True]
+                self.fetch_unit.flushed = True
                 if self.branch_result:
                     self.resources.branch_target = [(self.branch_target, 0)]
                 else:
