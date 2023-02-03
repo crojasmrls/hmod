@@ -1,7 +1,7 @@
 class PipelineParams:
     fetch_width = 2
-    physical_registers = 128
     int_alus = 2
+    physical_registers = 128
     branch_units = 1
     rob_entries = 128
     int_queue_slots = 32
@@ -12,3 +12,4 @@ class PipelineParams:
     bp_enable = True
     branch_predictor = 'bimodal_predictor'
     bp_entries = 1024
+    perf_counters_en = True

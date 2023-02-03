@@ -45,7 +45,7 @@ class INTFields(IntEnum):
 class InstructionTable:
     # Compute functions
     def exec_add(instr):
-        if instr.instr_touple[INTFields.IMMEDIATE]:
+        if instr.instr_tuple[INTFields.IMMEDIATE]:
             if len(instr.sources) >= 1:
                 instr.p_dest.value = instr.p_sources[0].value + instr.immediate
             else:
@@ -64,7 +64,7 @@ class InstructionTable:
             instr.p_dest.value = 0
 
     def exec_addr(instr):
-        if instr.instr_touple[INTFields.LABEL] == InstrLabel.LOAD:
+        if instr.instr_tuple[INTFields.LABEL] == InstrLabel.LOAD:
             instr.address = instr.p_sources[0].value + instr.immediate
         else:
             instr.address = instr.p_sources[1].value + instr.immediate

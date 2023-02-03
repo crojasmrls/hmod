@@ -22,7 +22,7 @@ class BasicInstrBlock:
 
 class InstrCache(sim.Component):
     """docstring for InstrCache"""
-    def setup(self, program, params, resources, thread_id, konata_signature):
+    def setup(self, program, params, resources, thread_id, konata_signature, performance_counters):
         self.program = program
         self.params = params
         self.bb_dict = {}
@@ -33,6 +33,7 @@ class InstrCache(sim.Component):
         self.resources = resources
         self.thread_id = thread_id
         self.konata_signature = konata_signature
+        self.performance_counters = performance_counters
         self.instr_id = 0
         self.bp_take_branch = False, None
         self.flushed = False
@@ -88,7 +89,8 @@ class InstrCache(sim.Component):
         new_instr = instr.Instr(instruction=self.bb_dict[self.bb_name].instr[self.offset][0],
                                 line_number=self.bb_dict[self.bb_name].instr[self.offset][1], params=self.params,
                                 resources=self.resources,  thread_id=self.thread_id, instr_id=self.instr_id,
-                                konata_signature=self.konata_signature, fetch_unit=self, bb_name=self.bb_name,
+                                konata_signature=self.konata_signature, performance_counters=self.performance_counters,
+                                fetch_unit=self, bb_name=self.bb_name,
                                 offset=self.offset, bp_take_branch=self.bp_take_branch, bp_tag_index=bp_tag_index,
                                 priority=0)
         self.resources.RobInst.add_instr(new_instr, self.instr_id)
