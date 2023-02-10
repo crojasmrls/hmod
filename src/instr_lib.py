@@ -144,10 +144,16 @@ class Instr(sim.Component):
             self.konata_signature.print_stage('DIS', 'LSB', self.thread_id, self.instr_id)
             yield self.hold(1)
             # self.enter(self.resources.LoadStoreQueueInst.entries)
-            #  Waiting for commit
-            while self.resources.RobInst.instr_end(self.instr_id):
+            # Issue LSB
+            yield self.request(self.resources.cache_ports)
+            yield self.hold(1)
+           # Issue LSU/Memory-pipeline
+            while self.resources.RobInst.instr_next_end(self.instr_id):
                 yield self.hold(1)
             self.konata_signature.print_stage('RRE', 'MEM', self.thread_id, self.instr_id)
+            yield  self.hold(1)
+            self.release((self.resources.cache_ports, 1))
+            yield self.hold(2)
             self.compute()
             if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD:
                 self.p_dest.value = self.resources.DataCacheInst.dc_load(self.address)
@@ -156,7 +162,6 @@ class Instr(sim.Component):
             else:
                 self.resources.DataCacheInst.dc_store(self.address, self.p_sources[0].value)
                 self.data = self.p_sources[0].value
-            yield self.hold(3)
             self.konata_signature.print_stage('MEM', 'CMP', self.thread_id, self.instr_id)
         yield self.hold(1)  # WB cycle
         while self.resources.RobInst.instr_end(self.instr_id):

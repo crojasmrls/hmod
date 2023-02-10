@@ -9,6 +9,13 @@ class ReorderBuffer:
 
     def instr_end(self, instr_id):
         return instr_id != self.rob_list[0][1]
+    def instr_next_end(self, instr_id):
+        if instr_id == self.rob_list[0][1]:
+            return False
+        elif instr_id == self.rob_list[1][1]:
+            return False
+        else:
+            return True
 
     def add_instr(self, instr, instr_id):
         # yield self.request(self.rob_resource)
