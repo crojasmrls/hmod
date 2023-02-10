@@ -20,6 +20,7 @@ class Resources:
         self.brob_resource = sim.Resource('brob_resource', capacity=self.params.brob_entries)
         self.rename_resource = sim.Resource('rename_resource', capacity=1)
         self.cache_ports = sim.Resource("cache_ports", capacity=1)
+        self.commit_ports = sim.Resource("commit_ports", capacity=self.params.commit_width)
         # self.h_units = sim.Resource('h_units', capacity=1) not implemented for now
         # instances
         self.RobInst = rob.ReorderBuffer(rob_entries=self.params.rob_entries)

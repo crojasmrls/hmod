@@ -1,5 +1,6 @@
 class PipelineParams:
     fetch_width = 2
+    commit_width = 2
     int_alus = 2
     physical_registers = 128
     branch_units = 1

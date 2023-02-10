@@ -167,26 +167,32 @@ class Instr(sim.Component):
                 self.data = self.p_sources[0].value
             self.konata_signature.print_stage('MEM', 'CMP', self.thread_id, self.instr_id)
         yield self.hold(1)  # WB cycle
+        self.konata_signature.print_stage('CMP', 'ROB', self.thread_id, self.instr_id)
+        # pooling to wait rob head
         while self.resources.RobInst.instr_end(self.instr_id):
             yield self.hold(1)
+        # advance Rob head to commit next intruction
+        self.resources.RobInst.release_instr()
+        yield self.request(self.resources.commit_ports)
         # Commit
-        self.konata_signature.print_stage('CMP', 'COM', self.thread_id, self.instr_id)
+        self.konata_signature.print_stage('ROB', 'COM', self.thread_id, self.instr_id)
         # Counters increment
+        yield self.hold(1)
         if self.params.perf_counters_en:
             self.performance_counters.ECInst.increase_counter('commits')
             self.performance_counters.ECInst.set_counter('commit_cycles',
                                                          self.performance_counters.ECInst.read_counter('cycles'))
+        # torture trace
         srcs = [(self.sources[i], self.p_sources[i].value) for i in range(0, len(self.sources))]
         self.konata_signature.print_torture(self.thread_id, self.instr_id, self.line_number, self.instruction,
                                             self.dest, self.data, srcs, self.address)
+        # free claimed resources
         for resource in self.claimed_resources():
             self.release((resource, 1))
-        self.resources.RobInst.release_instr()
         self.fetch_unit.release_rob()
         # Remove RAT shadow copy when is a branch
         if not self.params.exe_brob_release and self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
             self.resources.RegisterFileInst.release_shadow_rat(self.instr_id)
-        yield self.hold(1)
         if self.resources.finished and (self.resources.RobInst.rob_list == []):
             print('Program end')
         self.konata_signature.retire_instr(self.thread_id, self.instr_id, False)
