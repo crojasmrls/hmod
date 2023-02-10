@@ -104,9 +104,6 @@ class InstrCache(sim.Component):
         index = line_number % bp_entries
         return tag, index
 
-    def release_rob(self):
-        self.release((self.resources.RobInst.rob_resource, 1))
-
     def release_fetch(self):
         self.release((self.resources.fetch_resource, 1))
 
@@ -130,12 +127,10 @@ class InstrCache(sim.Component):
             else:
                 # Wait for stalls in front end
                 yield self.wait(self.resources.decode_state)
-                yield self.request(self.resources.RobInst.rob_resource)
                 # Create new instruction
                 if self.flushed:
                     self.flushed = False
                     self.release_fetch()
-                    self.release_rob()
                 else:
                     self.create_instr()
             # Condition to advance to next basic block

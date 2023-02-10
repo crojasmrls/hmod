@@ -40,6 +40,8 @@ class Instr(sim.Component):
         self.konata_signature.print_stage('DEC', 'RNM', self.thread_id, self.instr_id)
         yield self.wait(self.resources.decode_state, urgent=True)
         self.resources.decode_state.set(False)
+        # Front end Resourses
+        yield self.request(self.resources.RobInst.rob_resource)
         yield self.request(self.resources.rename_resource)
         # Arithmetic Datapath
         self.p_sources = [self.resources.RegisterFileInst.get_reg(src) for src in self.sources]
@@ -189,7 +191,6 @@ class Instr(sim.Component):
         # free claimed resources
         for resource in self.claimed_resources():
             self.release((resource, 1))
-        self.fetch_unit.release_rob()
         # Remove RAT shadow copy when is a branch
         if not self.params.exe_brob_release and self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
             self.resources.RegisterFileInst.release_shadow_rat(self.instr_id)

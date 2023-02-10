@@ -37,5 +37,4 @@ class ReorderBuffer:
         instr.konata_signature.retire_instr(instr.thread_id, instr.instr_id, True)
         for resource in instr.claimed_resources():
             instr.release((resource, 1))
-        instr.fetch_unit.release_rob()
         instr.cancel()
