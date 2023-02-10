@@ -148,11 +148,14 @@ class Instr(sim.Component):
             yield self.request(self.resources.cache_ports)
             yield self.hold(1)
            # Issue LSU/Memory-pipeline
-            while self.resources.RobInst.instr_next_end(self.instr_id):
-                yield self.hold(1)
+            for x in self.p_sources:
+                yield self.wait(x.reg_state)
+            if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
+                while self.resources.RobInst.instr_next_end(self.instr_id):
+                    yield self.hold(1)
             self.konata_signature.print_stage('RRE', 'MEM', self.thread_id, self.instr_id)
             self.compute()
-            yield  self.hold(1)
+            yield self.hold(1)
             self.release((self.resources.cache_ports, 1))
             yield self.hold(2)
             if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD:
