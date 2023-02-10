@@ -1,3 +1,5 @@
 konata_signature.txt
 torture_signature.sig
+*.idea*
+*__pycache__*
 
