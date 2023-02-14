@@ -48,4 +48,5 @@ print("Simulated instructions per second:",
       round(PEInst0.InstrCacheInst.instr_id/(end-start), 2))
 print("Data cache dump:")
 PEInst0.ResInst.DataCacheInst.print_data_cache()
-PerformanceCountersInst.print_metrics()
+if perf_counters_en:
+    PerformanceCountersInst.print_metrics()
