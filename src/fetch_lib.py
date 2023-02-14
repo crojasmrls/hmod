@@ -111,7 +111,10 @@ class InstrCache(sim.Component):
         # Condition to end fetch process, if the bb_name pointer reach END and the ROB is empty the fetch process
         # is terminated
         while self.bb_name != 'END' or self.resources.RobInst.count_inst != 0:
+            # Request fetch width port
             yield self.request(self.resources.fetch_resource)
+            # Wait for stalls in front end
+            yield self.wait(self.resources.frontend_lock)
             if len(self.resources.miss_branch) != 0:
                 self.flushed = False
                 if self.resources.miss_branch.pop(0):
@@ -125,8 +128,6 @@ class InstrCache(sim.Component):
                 self.resources.finished = True
                 yield self.passivate()
             else:
-                # Wait for stalls in front end
-                yield self.wait(self.resources.decode_state)
                 # Create new instruction
                 if self.flushed:
                     self.flushed = False

@@ -36,11 +36,11 @@ class Instr(sim.Component):
         yield self.hold(1)  # Decode
         self.konata_signature.print_stage('FET', self.state, self.thread_id, self.instr_id)
         self.fetch_unit.release_fetch()
+        yield self.wait(self.resources.frontend_lock, urgent=True)
         yield self.hold(1)  # Decode
         self.konata_signature.print_stage('DEC', 'RNM', self.thread_id, self.instr_id)
-        yield self.wait(self.resources.decode_state, urgent=True)
-        self.resources.decode_state.set(False)
         # Front end Resourses
+        self.resources.frontend_lock.set(False)
         yield self.request(self.resources.RobInst.rob_resource)
         yield self.request(self.resources.rename_resource)
         # Arithmetic Datapath
@@ -54,13 +54,15 @@ class Instr(sim.Component):
             yield self.request(self.resources.int_queue)
             #   self.enter(self.int_queue)
             # If there is destination a physical register is requested and created
-            self.resources.decode_state.set(True)
             self.release((self.resources.rename_resource, 1))
+            self.resources.frontend_lock.set(True)
             yield self.hold(1)  # Hold for renaming stage
             self.konata_signature.print_stage('RNM', 'DIS', self.thread_id, self.instr_id)
             yield self.hold(1)
+            yield self.request(self.resources.int_alloc_ports)
             self.konata_signature.print_stage('DIS', 'ALL', self.thread_id, self.instr_id)
             yield self.hold(1)
+            self.release((self.resources.int_alloc_ports, 1))
             self.konata_signature.print_stage('ALL', 'QUE', self.thread_id, self.instr_id)
             for x in self.p_sources:
                 yield self.wait(x.reg_state)
@@ -93,13 +95,15 @@ class Instr(sim.Component):
         if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
             self.resources.RegisterFileInst.push_rat(self.instr_id)
             yield self.request(self.resources.int_queue)
-            self.resources.decode_state.set(True)
             self.release((self.resources.rename_resource, 1))
+            self.resources.frontend_lock.set(True)
             yield self.hold(1)  # Hold for renaming stage
             self.konata_signature.print_stage('RNM', 'DIS', self.thread_id, self.instr_id)
             yield self.hold(1)
+            yield self.request(self.resources.int_alloc_ports)
             self.konata_signature.print_stage('DIS', 'ALL', self.thread_id, self.instr_id)
             yield self.hold(1)
+            self.release((self.resources.int_alloc_ports, 1))
             self.konata_signature.print_stage('ALL', 'QUE', self.thread_id, self.instr_id)
             for x in self.p_sources:
                 yield self.wait(x.reg_state)
@@ -138,8 +142,8 @@ class Instr(sim.Component):
         elif self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD \
                 or self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
             yield self.request(self.resources.LoadStoreQueueInst.lsu_slots)
-            self.resources.decode_state.set(True)
             self.release((self.resources.rename_resource, 1))
+            self.resources.frontend_lock.set(True)
             yield self.hold(1)  # Hold for dispatch stage
             self.konata_signature.print_stage('DEC', 'DIS', self.thread_id, self.instr_id)
             yield self.hold(1)  # Hold for dispatch stage
@@ -149,7 +153,7 @@ class Instr(sim.Component):
             # Issue LSB
             yield self.request(self.resources.cache_ports)
             yield self.hold(1)
-           # Issue LSU/Memory-pipeline
+            # Issue LSU/Memory-pipeline
             for x in self.p_sources:
                 yield self.wait(x.reg_state)
             if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:

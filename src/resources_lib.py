@@ -21,12 +21,13 @@ class Resources:
         self.rename_resource = sim.Resource('rename_resource', capacity=1)
         self.cache_ports = sim.Resource("cache_ports", capacity=1)
         self.commit_ports = sim.Resource("commit_ports", capacity=self.params.commit_width)
+        self.int_alloc_ports = sim.Resource("int_alloc_ports", capacity=self.params.commit_width)
         # self.h_units = sim.Resource('h_units', capacity=1) not implemented for now
         # instances
         self.RobInst = rob.ReorderBuffer(rob_entries=self.params.rob_entries)
         self.RegisterFileInst = rf.RegFile(physical_registers=self.params.physical_registers)
         # states
-        self.decode_state = sim.State("decode_ready", value=True)
+        self.frontend_lock = sim.State("frontend_lock", value=True)
         self.finished = False
         # Branch Calculation queues
         self.miss_branch = []

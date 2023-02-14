@@ -26,7 +26,7 @@ class ReorderBuffer:
 
     def recovery_rob(self, instr_id):
         instr = self.rob_list[-1]
-        instr[0].resources.decode_state.set(True)
+        instr[0].resources.frontend_lock.set(True)
         while instr[1] != instr_id:
             self.rob_list.pop()
             self.release_resources(instr[0])
