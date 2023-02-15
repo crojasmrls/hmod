@@ -7,11 +7,11 @@ class PipelineParams:
     rob_entries = 128
     int_queue_slots = 32
     int_queue_alloc_ports = 2
-    lsu_slots = 64
-    brob_entries = 32
+    lsu_slots = 32
+    brob_entries = 16
     branch_in_int_alu = True
     exe_brob_release = True
     bp_enable = True
     branch_predictor = 'bimodal_predictor'
-    bp_entries = 1024
+    bp_entries = 128
     perf_counters_en = True
