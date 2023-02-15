@@ -32,17 +32,19 @@ class Instr(sim.Component):
         self.set_fields()
 
     def process(self):
-        self.state = 'DEC'
         yield self.hold(1)  # Decode
-        self.konata_signature.print_stage('FET', self.state, self.thread_id, self.instr_id)
         self.fetch_unit.release_fetch()
         yield self.wait(self.resources.frontend_lock, urgent=True)
-        yield self.hold(1)  # Decode
-        self.konata_signature.print_stage('DEC', 'RNM', self.thread_id, self.instr_id)
-        # Front end Resourses
         self.resources.frontend_lock.set(False)
+        yield self.request(self.resources.decode_ports)
+        self.konata_signature.print_stage('FET', 'DEC', self.thread_id, self.instr_id)
+        yield self.hold(1)  # Decode
+        # Front end Resourses
+        yield self.request(self.resources.rename_ports)
         yield self.request(self.resources.RobInst.rob_resource)
         yield self.request(self.resources.rename_resource)
+        self.konata_signature.print_stage('DEC', 'RNM', self.thread_id, self.instr_id)
+        self.release((self.resources.decode_ports, 1))
         # Arithmetic Datapath
         self.p_sources = [self.resources.RegisterFileInst.get_reg(src) for src in self.sources]
         if self.instr_tuple[dec.INTFields.DEST]:
@@ -57,6 +59,7 @@ class Instr(sim.Component):
             self.release((self.resources.rename_resource, 1))
             self.resources.frontend_lock.set(True)
             yield self.hold(1)  # Hold for renaming stage
+            self.release((self.resources.rename_ports, 1))
             self.konata_signature.print_stage('RNM', 'DIS', self.thread_id, self.instr_id)
             yield self.hold(1)
             yield self.request(self.resources.int_alloc_ports)
@@ -98,6 +101,7 @@ class Instr(sim.Component):
             self.release((self.resources.rename_resource, 1))
             self.resources.frontend_lock.set(True)
             yield self.hold(1)  # Hold for renaming stage
+            self.release((self.resources.rename_ports, 1))
             self.konata_signature.print_stage('RNM', 'DIS', self.thread_id, self.instr_id)
             yield self.hold(1)
             yield self.request(self.resources.int_alloc_ports)
@@ -145,10 +149,13 @@ class Instr(sim.Component):
             self.release((self.resources.rename_resource, 1))
             self.resources.frontend_lock.set(True)
             yield self.hold(1)  # Hold for dispatch stage
-            self.konata_signature.print_stage('DEC', 'DIS', self.thread_id, self.instr_id)
+            self.release((self.resources.rename_ports, 1))
+            self.konata_signature.print_stage('RNM', 'DIS', self.thread_id, self.instr_id)
             yield self.hold(1)  # Hold for dispatch stage
+            yield self.request(self.resources.int_alloc_ports)
             self.konata_signature.print_stage('DIS', 'LSB', self.thread_id, self.instr_id)
             yield self.hold(1)
+            self.release((self.resources.int_alloc_ports, 1))
             # self.enter(self.resources.LoadStoreQueueInst.entries)
             # Issue LSB
             yield self.request(self.resources.cache_ports)

@@ -18,10 +18,14 @@ class Resources:
         self.LoadStoreQueueInst = lsq.LoadStoreQueue(lsu_slots=self.params.lsu_slots)
         self.DataCacheInst = dc.DataCache()
         self.brob_resource = sim.Resource('brob_resource', capacity=self.params.brob_entries)
+        self.decode_ports = sim.Resource('decode_ports', capacity=self.params.fetch_width)
+        # This resource is used to serialize teh renaming procces
         self.rename_resource = sim.Resource('rename_resource', capacity=1)
+        # Max number of instructions in renaming
+        self.rename_ports = sim.Resource('rename_ports', capacity=self.params.fetch_width)
+        self.int_alloc_ports = sim.Resource("int_alloc_ports", capacity=self.params.fetch_width)
         self.cache_ports = sim.Resource("cache_ports", capacity=1)
         self.commit_ports = sim.Resource("commit_ports", capacity=self.params.commit_width)
-        self.int_alloc_ports = sim.Resource("int_alloc_ports", capacity=self.params.commit_width)
         # self.h_units = sim.Resource('h_units', capacity=1) not implemented for now
         # instances
         self.RobInst = rob.ReorderBuffer(rob_entries=self.params.rob_entries)
