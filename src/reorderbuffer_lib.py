@@ -26,7 +26,6 @@ class ReorderBuffer:
 
     def recovery_rob(self, instr_id):
         instr = self.rob_list[-1]
-        instr[0].resources.frontend_lock.set(True)
         while instr[1] != instr_id:
             self.rob_list.pop()
             self.release_resources(instr[0])
@@ -37,4 +36,5 @@ class ReorderBuffer:
         instr.konata_signature.retire_instr(instr.thread_id, instr.instr_id, True)
         for resource in instr.claimed_resources():
             instr.release((resource, 1))
+        instr.fetch_unit.release_fetch()
         instr.cancel()

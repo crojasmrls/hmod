@@ -105,7 +105,8 @@ class InstrCache(sim.Component):
         return tag, index
 
     def release_fetch(self):
-        self.release((self.resources.fetch_resource, 1))
+        for resource in self.claimed_resources():
+            self.release((resource, 1))
 
     def process(self):
         # Condition to end fetch process, if the bb_name pointer reach END and the ROB is empty the fetch process
@@ -113,8 +114,6 @@ class InstrCache(sim.Component):
         while self.bb_name != 'END' or self.resources.RobInst.count_inst != 0:
             # Request fetch width port
             yield self.request(self.resources.fetch_resource)
-            # Wait for stalls in front end
-            yield self.wait(self.resources.frontend_lock)
             if len(self.resources.miss_branch) != 0:
                 self.flushed = False
                 if self.resources.miss_branch.pop(0):

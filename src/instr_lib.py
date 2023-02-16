@@ -33,10 +33,8 @@ class Instr(sim.Component):
 
     def process(self):
         yield self.hold(1)  # Decode
-        self.fetch_unit.release_fetch()
-        yield self.wait(self.resources.frontend_lock, urgent=True)
-        self.resources.frontend_lock.set(False)
         yield self.request(self.resources.decode_ports)
+        self.fetch_unit.release_fetch()
         self.konata_signature.print_stage('FET', 'DEC', self.thread_id, self.instr_id)
         yield self.hold(1)  # Decode
         # Front end Resourses
@@ -57,7 +55,6 @@ class Instr(sim.Component):
             #   self.enter(self.int_queue)
             # If there is destination a physical register is requested and created
             self.release((self.resources.rename_resource, 1))
-            self.resources.frontend_lock.set(True)
             yield self.hold(1)  # Hold for renaming stage
             self.release((self.resources.rename_ports, 1))
             self.konata_signature.print_stage('RNM', 'DIS', self.thread_id, self.instr_id)
@@ -99,7 +96,6 @@ class Instr(sim.Component):
             self.resources.RegisterFileInst.push_rat(self.instr_id)
             yield self.request(self.resources.int_queue)
             self.release((self.resources.rename_resource, 1))
-            self.resources.frontend_lock.set(True)
             yield self.hold(1)  # Hold for renaming stage
             self.release((self.resources.rename_ports, 1))
             self.konata_signature.print_stage('RNM', 'DIS', self.thread_id, self.instr_id)
@@ -147,7 +143,6 @@ class Instr(sim.Component):
                 or self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
             yield self.request(self.resources.LoadStoreQueueInst.lsu_slots)
             self.release((self.resources.rename_resource, 1))
-            self.resources.frontend_lock.set(True)
             yield self.hold(1)  # Hold for dispatch stage
             self.release((self.resources.rename_ports, 1))
             self.konata_signature.print_stage('RNM', 'DIS', self.thread_id, self.instr_id)

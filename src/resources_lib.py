@@ -31,7 +31,6 @@ class Resources:
         self.RobInst = rob.ReorderBuffer(rob_entries=self.params.rob_entries)
         self.RegisterFileInst = rf.RegFile(physical_registers=self.params.physical_registers)
         # states
-        self.frontend_lock = sim.State("frontend_lock", value=True)
         self.finished = False
         # Branch Calculation queues
         self.miss_branch = []
