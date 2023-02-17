@@ -148,30 +148,33 @@ class Instr(sim.Component):
             self.konata_signature.print_stage('RNM', 'DIS', self.thread_id, self.instr_id)
             yield self.hold(1)  # Hold for dispatch stage
             yield self.request(self.resources.int_alloc_ports)
-            self.konata_signature.print_stage('DIS', 'LSB', self.thread_id, self.instr_id)
+            self.konata_signature.print_stage('DIS', 'ALL', self.thread_id, self.instr_id)
             yield self.hold(1)
             self.release((self.resources.int_alloc_ports, 1))
             # self.enter(self.resources.LoadStoreQueueInst.entries)
-            # Issue LSB
-            yield self.request(self.resources.cache_ports)
-            yield self.hold(1)
+            self.konata_signature.print_stage('ALL', 'LSB', self.thread_id, self.instr_id)
             # Issue LSU/Memory-pipeline
+            yield self.request(self.resources.cache_ports)
             for x in self.p_sources:
                 yield self.wait(x.reg_state)
             if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
-                while self.resources.RobInst.instr_next_end(self.instr_id):
+                while self.resources.RobInst.instr_end(self.instr_id):
                     yield self.hold(1)
-            self.konata_signature.print_stage('RRE', 'MEM', self.thread_id, self.instr_id)
+            self.konata_signature.print_stage('LSB', 'RRE', self.thread_id, self.instr_id)
             self.compute()
             yield self.hold(1)
             self.release((self.resources.cache_ports, 1))
-            yield self.hold(2)
+            self.konata_signature.print_stage('RRE', 'MEM', self.thread_id, self.instr_id)
+            yield self.hold(1)
+            yield self.hold(1)  # Use two yield hold functions to avoid errors.
             if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD:
                 self.p_dest.value = self.resources.DataCacheInst.dc_load(self.address)
                 self.p_dest.reg_state.set(True)
+                # To print signature
                 self.data = self.p_dest.value
             else:
                 self.resources.DataCacheInst.dc_store(self.address, self.p_sources[0].value)
+                # To print signature
                 self.data = self.p_sources[0].value
             self.konata_signature.print_stage('MEM', 'CMP', self.thread_id, self.instr_id)
         yield self.hold(1)  # WB cycle
