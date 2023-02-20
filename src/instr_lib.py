@@ -79,16 +79,18 @@ class Instr(sim.Component):
             if self.instr_tuple[dec.INTFields.DEST]:
                 self.data = self.p_dest.value
             if self.instr_tuple[dec.INTFields.PIPELINED]:  # If operation is pipelined
-                yield self.hold(1)
-                yield self.hold(self.instr_tuple[dec.INTFields.LATENCY] - 1)  # Latency - 1
+                for x in range(self.instr_tuple[dec.INTFields.LATENCY]):
+                    yield self.hold(1)
                 if self.instr_tuple[dec.INTFields.DEST]:  # Set executed bit
                     self.p_dest.reg_state.set(True)
             else:
-                yield self.hold(self.instr_tuple[dec.INTFields.LATENCY])
-                yield self.hold(self.instr_tuple[dec.INTFields.LATENCY] - 1)  # Latency - 1
+                for x in range(self.instr_tuple[dec.INTFields.LATENCY]):
+                    # Non pipelining operations must have 2 cycles or more of latency
+                    if self.instr_tuple[dec.INTFields.LATENCY] - x - 2 == 0:  # Early release condition
+                        self.release((self.resources.int_units, 1))
+                    yield self.hold(1)
                 if self.instr_tuple[dec.INTFields.DEST]:  # Set executed bit
                     self.p_dest.reg_state.set(True)
-                self.release(self.resources.int_units, 1)
             self.release((self.resources.int_queue, 1))
             self.konata_signature.print_stage('EXE', 'CMP', self.thread_id, self.instr_id)
         # Branch datapath
@@ -120,8 +122,8 @@ class Instr(sim.Component):
             yield self.hold(1)  # Hold for rre stage
             self.konata_signature.print_stage('RRE', 'EXE', self.thread_id, self.instr_id)
             self.compute()
-            yield self.hold(1)
-            yield self.hold(self.instr_tuple[dec.INTFields.LATENCY] - 1)  # Latency - 1
+            for x in range(self.instr_tuple[dec.INTFields.LATENCY]):
+                yield self.hold(1)
             self.release((self.resources.int_queue, 1))
             self.konata_signature.print_stage('EXE', 'CMP', self.thread_id, self.instr_id)
             bp_hit = (not self.branch_result and not self.bp_take_branch[0]) \
