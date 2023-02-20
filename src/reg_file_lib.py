@@ -13,18 +13,18 @@ class RegFile:
     def get_reg(self, arch_reg):
         return self.rat[arch_reg]
 
-    def push_rat(self, instr_id):
-        self.rat_stack.append((self.rat.copy(), instr_id))
+    def push_rat(self, instr):
+        self.rat_stack.append((self.rat.copy(), instr))
 
-    def recovery_rat(self, instr_id):
+    def recovery_rat(self, recovery_instr):
         shadow_rat = self.rat_stack.pop()
-        while shadow_rat[1] != instr_id:
+        while shadow_rat[1] != recovery_instr:
             shadow_rat = self.rat_stack.pop()
         self.rat = shadow_rat[0].copy()
 
-    def release_shadow_rat(self, instr_id):
+    def release_shadow_rat(self, instr):
         for shadow_rat in self.rat_stack:
-            if shadow_rat[1] == instr_id:
+            if shadow_rat[1] == instr:
                 self.rat_stack.remove(shadow_rat)
                 break
 

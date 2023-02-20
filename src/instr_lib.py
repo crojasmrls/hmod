@@ -93,7 +93,7 @@ class Instr(sim.Component):
             self.konata_signature.print_stage('EXE', 'CMP', self.thread_id, self.instr_id)
         # Branch datapath
         if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
-            self.resources.RegisterFileInst.push_rat(self.instr_id)
+            self.resources.RegisterFileInst.push_rat(self)
             yield self.request(self.resources.int_queue)
             self.release((self.resources.rename_resource, 1))
             yield self.hold(1)  # Hold for renaming stage
@@ -137,7 +137,7 @@ class Instr(sim.Component):
                     self.resources.branch_target = [(self.bb_name, self.offset + 1)]
                 self.recovery()
             if self.params.exe_brob_release:
-                self.resources.RegisterFileInst.release_shadow_rat(self.instr_id)
+                self.resources.RegisterFileInst.release_shadow_rat(self)
         # LSU datapath
         elif self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD \
                 or self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
@@ -202,7 +202,7 @@ class Instr(sim.Component):
             self.release((resource, 1))
         # Remove RAT shadow copy when is a branch
         if not self.params.exe_brob_release and self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
-            self.resources.RegisterFileInst.release_shadow_rat(self.instr_id)
+            self.resources.RegisterFileInst.release_shadow_rat(self)
         if self.resources.finished and (self.resources.RobInst.rob_list == []):
             print('Program end')
         self.konata_signature.retire_instr(self.thread_id, self.instr_id, False)
@@ -220,7 +220,7 @@ class Instr(sim.Component):
     # liberar la unidad
 
     def recovery(self):
-        self.resources.RegisterFileInst.recovery_rat(self.instr_id)
+        self.resources.RegisterFileInst.recovery_rat(self)
         self.resources.RobInst.recovery_rob(self)
         if self.resources.finished:
             self.resources.finished = False
