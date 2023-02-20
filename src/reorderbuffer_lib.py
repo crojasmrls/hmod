@@ -7,29 +7,30 @@ class ReorderBuffer:
         self.rob_resource = sim.Resource('rob_resource', capacity=self.rob_entries)
         self.rob_list = []
 
-    def instr_end(self, instr_id):
-        return instr_id != self.rob_list[0][1]
-    def instr_next_end(self, instr_id):
-        if instr_id == self.rob_list[0][1]:
+    def instr_end(self, instr):
+        return instr != self.rob_list[0]
+
+    def instr_next_end(self, instr):
+        if instr == self.rob_list[0]:
             return False
-        elif instr_id == self.rob_list[1][1]:
+        elif instr == self.rob_list[1]:
             return False
         else:
             return True
 
-    def add_instr(self, instr, instr_id):
+    def add_instr(self, instr):
         # yield self.request(self.rob_resource)
-        self.rob_list.append((instr, instr_id))
+        self.rob_list.append(instr)
 
     def release_instr(self):
         self.rob_list.pop(0)
 
-    def recovery_rob(self, instr_id):
-        instr = self.rob_list[-1]
-        while instr[1] != instr_id:
+    def recovery_rob(self, recovery_instr):
+        head_instr = self.rob_list[-1]
+        while head_instr != recovery_instr:
             self.rob_list.pop()
-            self.release_resources(instr[0])
-            instr = self.rob_list[-1]
+            self.release_resources(head_instr)
+            head_instr = self.rob_list[-1]
 
     @staticmethod
     def release_resources(instr):

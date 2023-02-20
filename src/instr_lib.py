@@ -158,7 +158,7 @@ class Instr(sim.Component):
             for x in self.p_sources:
                 yield self.wait(x.reg_state)
             if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
-                while self.resources.RobInst.instr_end(self.instr_id):
+                while self.resources.RobInst.instr_end(self):
                     yield self.hold(1)
             self.konata_signature.print_stage('LSB', 'RRE', self.thread_id, self.instr_id)
             self.compute()
@@ -180,7 +180,7 @@ class Instr(sim.Component):
         yield self.hold(1)  # WB cycle
         self.konata_signature.print_stage('CMP', 'ROB', self.thread_id, self.instr_id)
         # pooling to wait rob head
-        while self.resources.RobInst.instr_end(self.instr_id):
+        while self.resources.RobInst.instr_end(self):
             yield self.hold(1)
         # advance Rob head to commit next intruction
         self.resources.RobInst.release_instr()
@@ -221,7 +221,7 @@ class Instr(sim.Component):
 
     def recovery(self):
         self.resources.RegisterFileInst.recovery_rat(self.instr_id)
-        self.resources.RobInst.recovery_rob(self.instr_id)
+        self.resources.RobInst.recovery_rob(self)
         if self.resources.finished:
             self.resources.finished = False
         if self.fetch_unit.ispassive():

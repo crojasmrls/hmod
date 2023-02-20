@@ -93,7 +93,7 @@ class InstrCache(sim.Component):
                                 fetch_unit=self, bb_name=self.bb_name,
                                 offset=self.offset, bp_take_branch=self.bp_take_branch, bp_tag_index=bp_tag_index,
                                 priority=0)
-        self.resources.RobInst.add_instr(new_instr, self.instr_id)
+        self.resources.RobInst.add_instr(new_instr)
         self.konata_signature.new_instr(self.thread_id, self.instr_id, self.bb_dict[self.bb_name].instr[self.offset][1],
                                         self.bb_dict[self.bb_name].instr[self.offset][0])
 
