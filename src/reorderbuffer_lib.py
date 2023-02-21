@@ -21,7 +21,7 @@ class ReorderBuffer:
 
     def store_next2commit(self):
         try:
-            for x in range(2):
+            for x in range(1, 2):
                 if self.rob_list[x].instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
                     return True
             return False
