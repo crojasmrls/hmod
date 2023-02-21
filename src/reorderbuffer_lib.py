@@ -1,4 +1,5 @@
 import salabim as sim
+import rv64uih_lib as dec
 
 
 class ReorderBuffer:
@@ -17,6 +18,15 @@ class ReorderBuffer:
             return False
         else:
             return True
+
+    def store_next2commit(self):
+        try:
+            for x in range(2):
+                if self.rob_list[x].instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
+                    return True
+            return False
+        except IndexError:
+            return False
 
     def add_instr(self, instr):
         # yield self.request(self.rob_resource)

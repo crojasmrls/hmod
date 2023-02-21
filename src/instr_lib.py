@@ -159,9 +159,9 @@ class Instr(sim.Component):
             yield self.request(self.resources.cache_ports)
             for x in self.p_sources:
                 yield self.wait(x.reg_state)
-            if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
-                while self.resources.RobInst.instr_end(self):
-                    yield self.hold(1)
+            if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE and self.resources.RobInst.instr_end(self):
+                self.resources.store_state.set(False)
+                yield self.wait(self.resources.store_state)
             self.konata_signature.print_stage('LSB', 'RRE', self.thread_id, self.instr_id)
             self.compute()
             yield self.hold(1)
@@ -184,6 +184,9 @@ class Instr(sim.Component):
         # pooling to wait rob head
         while self.resources.RobInst.instr_end(self):
             yield self.hold(1)
+        # Issue store condition
+        if self.resources.RobInst.store_next2commit():
+            self.resources.store_state.set(True)
         # advance Rob head to commit next intruction
         self.resources.RobInst.release_instr()
         yield self.request(self.resources.commit_ports)
