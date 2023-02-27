@@ -21,6 +21,7 @@ class Instr(sim.Component):
         self.offset = offset
         self.bp_take_branch = bp_take_branch
         self.bp_tag_index = bp_tag_index
+        self.back2back = False
         # Decoded Fields
         self.sources = []
         self.p_sources = []
@@ -73,6 +74,8 @@ class Instr(sim.Component):
             if self.instr_tuple[dec.INTFields.PIPELINED]:
                 self.release((self.resources.int_units, 1))
             self.konata_signature.print_stage('ISS', 'RRE', self.thread_id, self.instr_id)
+            #back2back issue of stores, It check if a store is the following instruction in the rob
+            self.resources.RobInst.store_next2commit(self)
             yield self.hold(1)  # Hold for rre stage
             self.konata_signature.print_stage('RRE', 'EXE', self.thread_id, self.instr_id)
             self.compute()
@@ -81,16 +84,15 @@ class Instr(sim.Component):
             if self.instr_tuple[dec.INTFields.PIPELINED]:  # If operation is pipelined
                 for x in range(self.instr_tuple[dec.INTFields.LATENCY]):
                     yield self.hold(1)
-                if self.instr_tuple[dec.INTFields.DEST]:  # Set executed bit
-                    self.p_dest.reg_state.set(True)
             else:
                 for x in range(self.instr_tuple[dec.INTFields.LATENCY]):
                     # Non pipelining operations must have 2 cycles or more of latency
                     if self.instr_tuple[dec.INTFields.LATENCY] - x - 2 == 0:  # Early release condition
                         self.release((self.resources.int_units, 1))
                     yield self.hold(1)
-                if self.instr_tuple[dec.INTFields.DEST]:  # Set executed bit
-                    self.p_dest.reg_state.set(True)
+            #Wake-up at WB stage
+            if self.instr_tuple[dec.INTFields.DEST]:  # Set executed bit
+                self.p_dest.reg_state.set(True)
             self.release((self.resources.int_queue, 1))
             self.konata_signature.print_stage('EXE', 'CMP', self.thread_id, self.instr_id)
         # Branch datapath
@@ -119,17 +121,13 @@ class Instr(sim.Component):
             if self.params.branch_in_int_alu:
                 self.release((self.resources.int_units, 1))
             self.konata_signature.print_stage('ISS', 'RRE', self.thread_id, self.instr_id)
+            #back2back issue of stores, It check if a store is the following instruction in the rob
+            self.resources.RobInst.store_next2commit(self)
             yield self.hold(1)  # Hold for rre stage
             self.konata_signature.print_stage('RRE', 'EXE', self.thread_id, self.instr_id)
             self.compute()
-            for x in range(self.instr_tuple[dec.INTFields.LATENCY]):
-                yield self.hold(1)
-            self.release((self.resources.int_queue, 1))
-            self.konata_signature.print_stage('EXE', 'CMP', self.thread_id, self.instr_id)
             bp_hit = (not self.branch_result and not self.bp_take_branch[0]) \
                 or (self.branch_result and self.bp_take_branch[0] and self.branch_target == self.bp_take_branch[1])
-            self.resources.branch_predictor.write_entry(self.bp_tag_index[0], self.bp_tag_index[1], bp_hit,
-                                                        self.branch_target)
             if not bp_hit:
                 self.resources.miss_branch = [True]
                 self.fetch_unit.flushed = True
@@ -138,8 +136,14 @@ class Instr(sim.Component):
                 else:
                     self.resources.branch_target = [(self.bb_name, self.offset + 1)]
                 self.recovery()
+            for x in range(self.instr_tuple[dec.INTFields.LATENCY]):
+                yield self.hold(1)
+            self.resources.branch_predictor.write_entry(self.bp_tag_index[0], self.bp_tag_index[1], bp_hit,
+                                                        self.branch_target)
+            self.release((self.resources.int_queue, 1))
             if self.params.exe_brob_release:
                 self.resources.RegisterFileInst.release_shadow_rat(self)
+            self.konata_signature.print_stage('EXE', 'CMP', self.thread_id, self.instr_id)
         # LSU datapath
         elif self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD \
                 or self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
@@ -159,11 +163,16 @@ class Instr(sim.Component):
             yield self.request(self.resources.cache_ports)
             for x in self.p_sources:
                 yield self.wait(x.reg_state)
-            if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE and self.resources.RobInst.instr_end(self):
+            self.konata_signature.print_stage('LSB', 'WUP', self.thread_id, self.instr_id)
+            if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE and \
+                    self.resources.RobInst.instr_end(self) and not self.back2back:
                 self.resources.store_state.set(False)
+                self.konata_signature.print_stage('WUP', 'LCK', self.thread_id, self.instr_id)
                 yield self.wait(self.resources.store_state)
-            self.konata_signature.print_stage('LSB', 'RRE', self.thread_id, self.instr_id)
+            self.konata_signature.print_stage('WUP', 'RRE', self.thread_id, self.instr_id)
             self.compute()
+            #back2back issue of stores, It check if a store is the following instruction in the rob
+            self.resources.RobInst.store_next2commit(self)
             yield self.hold(1)
             self.release((self.resources.cache_ports, 1))
             self.konata_signature.print_stage('RRE', 'MEM', self.thread_id, self.instr_id)
@@ -184,9 +193,6 @@ class Instr(sim.Component):
         # pooling to wait rob head
         while self.resources.RobInst.instr_end(self):
             yield self.hold(1)
-        # Issue store condition
-        if self.resources.RobInst.store_next2commit():
-            self.resources.store_state.set(True)
         # advance Rob head to commit next intruction
         self.resources.RobInst.release_instr()
         yield self.request(self.resources.commit_ports)

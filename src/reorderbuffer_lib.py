@@ -11,22 +11,15 @@ class ReorderBuffer:
     def instr_end(self, instr):
         return instr != self.rob_list[0]
 
-    def instr_next_end(self, instr):
-        if instr == self.rob_list[0]:
-            return False
-        elif instr == self.rob_list[1]:
-            return False
-        else:
-            return True
-
-    def store_next2commit(self):
+    def store_next2commit(self, instr):
         try:
-            for x in range(1, 2):
-                if self.rob_list[x].instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
-                    return True
-            return False
+            store = self.rob_list[self.rob_list.index(instr) + 1]
         except IndexError:
-            return False
+            pass
+        else:
+            if store.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
+                store.back2back = True
+                store.resources.store_state.set(True)
 
     def add_instr(self, instr):
         # yield self.request(self.rob_resource)
