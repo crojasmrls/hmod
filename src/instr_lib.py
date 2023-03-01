@@ -176,15 +176,21 @@ class Instr(sim.Component):
             yield self.hold(1)
             self.release((self.resources.cache_ports, 1))
             self.konata_signature.print_stage('RRE', 'MEM', self.thread_id, self.instr_id)
-            yield self.hold(1)
-            if self.instr_tuple[dec.INTFields.DEST]:  # Set executed bit
-                self.p_dest.reg_state.set(True)
-            yield self.hold(1)  # Use two yield hold functions to avoid errors.
             if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD:
-                self.p_dest.value = self.resources.DataCacheInst.dc_load(self.address)
+                next_store = self.resources.RobInst.store_next(self)
+                if next_store:
+                    if next_store.address == self.address:
+                        self.p_dest.value = next_store.p_sources[0].value
+                    else:
+                        self.p_dest.value = self.resources.DataCacheInst.dc_load(self.address)
+                else:
+                    self.p_dest.value = self.resources.DataCacheInst.dc_load(self.address)
+                self.p_dest.reg_state.set(True)
                 # To print signature
                 self.data = self.p_dest.value
-            else:
+            yield self.hold(1)
+            yield self.hold(1)  # Use two yield hold functions to avoid errors.
+            if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
                 self.resources.DataCacheInst.dc_store(self.address, self.p_sources[0].value)
                 # To print signature
                 self.data = self.p_sources[0].value
@@ -194,7 +200,7 @@ class Instr(sim.Component):
         # pooling to wait rob head
         while self.resources.RobInst.instr_end(self):
             yield self.hold(1)
-        # advance Rob head to commit next intruction
+        # advance Rob head to commit next instruction
         self.resources.RobInst.release_instr()
         yield self.request(self.resources.commit_ports)
         # Commit
