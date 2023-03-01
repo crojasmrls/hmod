@@ -76,11 +76,12 @@ class Instr(sim.Component):
             self.konata_signature.print_stage('ISS', 'RRE', self.thread_id, self.instr_id)
             #back2back issue of stores, It check if a store is the following instruction in the rob
             self.resources.RobInst.store_next2commit(self)
+            # Wake-up at EXE stage
+            self.compute()
+            if self.instr_tuple[dec.INTFields.DEST]:  # Set executed bit
+                self.p_dest.reg_state.set(True)
             yield self.hold(1)  # Hold for rre stage
             self.konata_signature.print_stage('RRE', 'EXE', self.thread_id, self.instr_id)
-            self.compute()
-            if self.instr_tuple[dec.INTFields.DEST]:
-                self.data = self.p_dest.value
             if self.instr_tuple[dec.INTFields.PIPELINED]:  # If operation is pipelined
                 for x in range(self.instr_tuple[dec.INTFields.LATENCY]):
                     yield self.hold(1)
@@ -90,9 +91,8 @@ class Instr(sim.Component):
                     if self.instr_tuple[dec.INTFields.LATENCY] - x - 2 == 0:  # Early release condition
                         self.release((self.resources.int_units, 1))
                     yield self.hold(1)
-            #Wake-up at WB stage
-            if self.instr_tuple[dec.INTFields.DEST]:  # Set executed bit
-                self.p_dest.reg_state.set(True)
+            if self.instr_tuple[dec.INTFields.DEST]:
+                self.data = self.p_dest.value
             self.release((self.resources.int_queue, 1))
             self.konata_signature.print_stage('EXE', 'CMP', self.thread_id, self.instr_id)
         # Branch datapath
@@ -177,10 +177,11 @@ class Instr(sim.Component):
             self.release((self.resources.cache_ports, 1))
             self.konata_signature.print_stage('RRE', 'MEM', self.thread_id, self.instr_id)
             yield self.hold(1)
+            if self.instr_tuple[dec.INTFields.DEST]:  # Set executed bit
+                self.p_dest.reg_state.set(True)
             yield self.hold(1)  # Use two yield hold functions to avoid errors.
             if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD:
                 self.p_dest.value = self.resources.DataCacheInst.dc_load(self.address)
-                self.p_dest.reg_state.set(True)
                 # To print signature
                 self.data = self.p_dest.value
             else:
