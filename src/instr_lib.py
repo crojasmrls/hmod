@@ -74,7 +74,7 @@ class Instr(sim.Component):
             if self.instr_tuple[dec.INTFields.PIPELINED]:
                 self.release((self.resources.int_units, 1))
             self.konata_signature.print_stage('ISS', 'RRE', self.thread_id, self.instr_id)
-            #back2back issue of stores, It check if a store is the following instruction in the rob
+            # back2back issue of stores, It check if a store is the following instruction in the rob
             self.resources.RobInst.store_next2commit(self)
             # Wake-up at EXE stage
             self.compute()
@@ -121,7 +121,7 @@ class Instr(sim.Component):
             if self.params.branch_in_int_alu:
                 self.release((self.resources.int_units, 1))
             self.konata_signature.print_stage('ISS', 'RRE', self.thread_id, self.instr_id)
-            #back2back issue of stores, It check if a store is the following instruction in the rob
+            # back2back issue of stores, It check if a store is the following instruction in the rob
             self.resources.RobInst.store_next2commit(self)
             yield self.hold(1)  # Hold for rre stage
             self.konata_signature.print_stage('RRE', 'EXE', self.thread_id, self.instr_id)
@@ -171,25 +171,28 @@ class Instr(sim.Component):
                 yield self.wait(self.resources.store_state)
             self.konata_signature.print_stage('WUP', 'RRE', self.thread_id, self.instr_id)
             self.compute()
-            #back2back issue of stores, It check if a store is the following instruction in the rob
+            # back2back issue of stores, It check if a store is the following instruction in the rob
             self.resources.RobInst.store_next2commit(self)
             yield self.hold(1)
             self.release((self.resources.cache_ports, 1))
             self.konata_signature.print_stage('RRE', 'MEM', self.thread_id, self.instr_id)
-            if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD:
-                next_store = self.resources.RobInst.store_next(self)
-                if next_store:
-                    if next_store.address == self.address:
-                        self.p_dest.value = next_store.p_sources[0].value
+            for x in range(self.params.l1_dcache_latency):
+                # Execute load a wake-up dependencies 2 cycles before finishing load.
+                if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD\
+                        and x+2 == self.params.l1_dcache_latency:
+                    next_store = self.resources.RobInst.store_next(self)
+                    # Store to Load forwarding
+                    if next_store:
+                        if next_store.address == self.address:
+                            self.p_dest.value = next_store.p_sources[0].value
+                        else:
+                            self.p_dest.value = self.resources.DataCacheInst.dc_load(self.address)
                     else:
                         self.p_dest.value = self.resources.DataCacheInst.dc_load(self.address)
-                else:
-                    self.p_dest.value = self.resources.DataCacheInst.dc_load(self.address)
-                self.p_dest.reg_state.set(True)
-                # To print signature
-                self.data = self.p_dest.value
-            yield self.hold(1)
-            yield self.hold(1)  # Use two yield hold functions to avoid errors.
+                    self.p_dest.reg_state.set(True)
+                    # To print signature
+                    self.data = self.p_dest.value
+                yield self.hold(1)
             if self.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
                 self.resources.DataCacheInst.dc_store(self.address, self.p_sources[0].value)
                 # To print signature
