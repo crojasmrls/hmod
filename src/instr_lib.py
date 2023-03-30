@@ -77,20 +77,22 @@ class Instr(sim.Component):
             self.resources.RobInst.store_next2commit(self)
             # Wake-up at EXE stage
             # Do computation
-            self.decoded_fields.instr_tuple[dec.INTFields.EXEC](self)
-            if self.decoded_fields.instr_tuple[dec.INTFields.DEST]:  # Set executed bit
-                self.p_dest.reg_state.set(True)
+            #Back to back issue
+            if self.decoded_fields.instr_tuple[dec.INTFields.LATENCY] == 1:
+                self.decoded_fields.instr_tuple[dec.INTFields.EXEC](self)
+                if self.decoded_fields.instr_tuple[dec.INTFields.DEST]:  # Set executed bit
+                    self.p_dest.reg_state.set(True)
             yield self.hold(1)  # Hold for rre stage
             self.konata_signature.print_stage('RRE', 'EXE', self.thread_id, self.instr_id)
-            if self.decoded_fields.instr_tuple[dec.INTFields.PIPELINED]:  # If operation is pipelined
-                for x in range(self.decoded_fields.instr_tuple[dec.INTFields.LATENCY]):
-                    yield self.hold(1)
-            else:
-                for x in range(self.decoded_fields.instr_tuple[dec.INTFields.LATENCY]):
-                    # Non pipelining operations must have 2 cycles or more of latency
-                    if self.decoded_fields.instr_tuple[dec.INTFields.LATENCY] - x - 2 == 0:  # Early release condition
-                        self.release((self.resources.int_units, 1))
-                    yield self.hold(1)
+            for x in range(self.decoded_fields.instr_tuple[dec.INTFields.LATENCY]):
+                if self.decoded_fields.instr_tuple[dec.INTFields.LATENCY] > 1:
+                    if self.decoded_fields.instr_tuple[dec.INTFields.LATENCY] - x - 2 == 0:
+                        self.decoded_fields.instr_tuple[dec.INTFields.EXEC](self)
+                        if self.decoded_fields.instr_tuple[dec.INTFields.DEST]:  # Set executed bit
+                                self.p_dest.reg_state.set(True)
+                        if not self.decoded_fields.instr_tuple[dec.INTFields.PIPELINED]:
+                            self.release((self.resources.int_units, 1))
+                yield self.hold(1) # EXE hold
             if self.decoded_fields.instr_tuple[dec.INTFields.DEST]:
                 self.data = self.p_dest.value
             self.release((self.resources.int_queue, 1))
