@@ -17,14 +17,14 @@ class ReorderBuffer:
         except IndexError:
             pass
         else:
-            if store.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
+            if store.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
                 store.back2back = True
                 store.resources.store_state.set(True)
 
     def store_next(self, reference_instr):
         store_instr = None
         for instr in self.rob_list:
-            if instr.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
+            if instr.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
                 store_instr = instr
             if instr == reference_instr:
                 return store_instr

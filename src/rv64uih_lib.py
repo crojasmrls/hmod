@@ -22,15 +22,6 @@ class InstrLabel(Enum):
     BRANCH = auto()
 
 
-# class ALUCode(Enum):
-#     OR = auto()
-#     ADD = auto()
-#     SUB = auto()
-#     MULT = auto()
-#     EQU = auto()
-#     NEQU = auto()
-
-
 class INTFields(IntEnum):
     LABEL = 0
     DEST = 1
@@ -45,12 +36,12 @@ class INTFields(IntEnum):
 class InstructionTable:
     # Compute functions
     def exec_add(instr):
-        if instr.instr_tuple[INTFields.IMMEDIATE]:
-            if len(instr.sources) >= 1:
-                instr.p_dest.value = instr.p_sources[0].value + instr.immediate
+        if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
+            if len(instr.decoded_fields.sources) >= 1:
+                instr.p_dest.value = instr.p_sources[0].value + instr.decoded_fields.immediate
             else:
-                instr.p_dest.value = instr.immediate
-        elif len(instr.sources) == 2:
+                instr.p_dest.value = instr.decoded_fields.immediate
+        elif len(instr.decoded_fields.sources) == 2:
             instr.p_dest.value = instr.p_sourcess[0].value + instr.p_sources[1].value
 
     def exec_sll(instr):
@@ -64,10 +55,10 @@ class InstructionTable:
             instr.p_dest.value = 0
 
     def exec_addr(instr):
-        if instr.instr_tuple[INTFields.LABEL] == InstrLabel.LOAD:
-            instr.address = instr.p_sources[0].value + instr.immediate
+        if instr.decoded_fields.instr_tuple[INTFields.LABEL] == InstrLabel.LOAD:
+            instr.address = instr.p_sources[0].value + instr.decoded_fields.immediate
         else:
-            instr.address = instr.p_sources[1].value + instr.immediate
+            instr.address = instr.p_sources[1].value + instr.decoded_fields.immediate
 
     def exec_nequ(instr):
         instr.branch_result = instr.p_sources[0].value != instr.p_sources[1].value
@@ -92,6 +83,82 @@ class InstructionTable:
             'beq':  (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_equ),
             # HILAR
             'new':  (InstrLabel.HILAR, True)}
+
+
+class DecodedFields:
+    def __init__(self, instruction, line_number):
+        self.instruction = instruction
+        self.line_number = line_number
+        # Decoded Fields
+        self.sources = []
+        self.dest = None
+        self.immediate = None
+        self.branch_target = None
+        self.instr_tuple = None
+        self.set_fields()
+
+    def set_fields(self):
+        parsed_instr = self.instruction.replace(',', ' ').split()
+        try:
+            self.instr_tuple = InstructionTable.Instructions[parsed_instr.pop(0)]
+        except KeyError:
+            print("NameError: Not supported instruction")
+            raise
+        if self.instr_tuple[INTFields.LABEL] == InstrLabel.INT:
+            if self.instr_tuple[INTFields.DEST]:
+                try:
+                    self.dest = IntRegisterTable.registers[parsed_instr.pop(0)]
+                except KeyError:
+                    print("NameError: Invalid destination register")
+                    raise
+            for x in range(self.instr_tuple[INTFields.N_SOURCES]):
+                try:
+                    self.sources.append(IntRegisterTable.registers[parsed_instr.pop(0)])
+                except KeyError:
+                    print("NameError: Invalid source register")
+                    raise
+            if self.instr_tuple[INTFields.IMMEDIATE]:
+                try:
+                    self.immediate = int(parsed_instr.pop(0))
+                except ValueError:
+                    print("NameError: Invalid immediate")
+                    raise
+        # MEM parse data source or destination, addr base source and immediate
+        if self.instr_tuple[INTFields.LABEL] == InstrLabel.STORE \
+                or self.instr_tuple[INTFields.LABEL] == InstrLabel.LOAD:
+            if self.instr_tuple[INTFields.DEST]:
+                try:
+                    self.dest = IntRegisterTable.registers[parsed_instr.pop(0)]
+                except KeyError:
+                    print("NameError: Invalid destination register")
+                    raise
+            else:
+                try:
+                    self.sources.append(IntRegisterTable.registers[parsed_instr.pop(0)])
+                except KeyError:
+                    print("NameError: Invalid source register")
+                    raise
+            parsed_instr = parsed_instr.pop(0).replace('(', ' ').split()
+            try:
+                self.immediate = int(parsed_instr.pop(0))
+            except ValueError:
+                print("NameError: Invalid immediate")
+                raise
+            parsed_instr = parsed_instr.pop(0).split(')')[0]
+            try:
+                self.sources.append(IntRegisterTable.registers[parsed_instr])
+            except KeyError:
+                print("NameError: Invalid source register")
+                raise
+        # Branch fields
+        if self.instr_tuple[INTFields.LABEL] == InstrLabel.BRANCH:
+            for x in range(self.instr_tuple[INTFields.N_SOURCES]):
+                try:
+                    self.sources.append(IntRegisterTable.registers[parsed_instr.pop(0)])
+                except KeyError:
+                    print("NameError: Invalid source register")
+                    raise
+            self.branch_target = parsed_instr.pop(0)
 
 # # Not used
 

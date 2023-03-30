@@ -1,5 +1,6 @@
 import salabim as sim
 import instr_lib as instr
+import rv64uih_lib as dec
 # from watchpoints import watch
 
 
@@ -86,8 +87,8 @@ class InstrCache(sim.Component):
         else:
             bp_tag_index = 0, 0
             self.bp_take_branch = False, None
-        new_instr = instr.Instr(instruction=self.bb_dict[self.bb_name].instr[self.offset][0],
-                                line_number=self.bb_dict[self.bb_name].instr[self.offset][1], params=self.params,
+        new_instr = instr.Instr(decoded_fields=dec.DecodedFields(instruction=self.bb_dict[self.bb_name].instr[self.offset][0],
+                                line_number=self.bb_dict[self.bb_name].instr[self.offset][1]), params=self.params,
                                 resources=self.resources,  thread_id=self.thread_id, instr_id=self.instr_id,
                                 konata_signature=self.konata_signature, performance_counters=self.performance_counters,
                                 fetch_unit=self, bb_name=self.bb_name,
