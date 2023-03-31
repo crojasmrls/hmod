@@ -125,10 +125,10 @@ class Instr(sim.Component):
             self.konata_signature.print_stage('ISS', 'RRE', self.thread_id, self.instr_id)
             # back2back issue of stores, It checks if a store is the following instruction in the ROB
             self.resources.RobInst.store_next2commit(self)
-            yield self.hold(1)  # Hold for rre stage
-            self.konata_signature.print_stage('RRE', 'EXE', self.thread_id, self.instr_id)
             # Do computation
             self.decoded_fields.instr_tuple[dec.INTFields.EXEC](self)
+            yield self.hold(1)  # Hold for rre stage
+            self.konata_signature.print_stage('RRE', 'EXE', self.thread_id, self.instr_id)
             bp_hit = (not self.branch_result and not self.bp_take_branch[0]) \
                 or (self.branch_result and self.bp_take_branch[0]
                     and self.decoded_fields.branch_target == self.bp_take_branch[1])
