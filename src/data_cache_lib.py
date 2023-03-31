@@ -1,10 +1,12 @@
+import random
+
 
 class DataCache:
     def __init__(self):
         self.mem = {}
 
     def dc_load(self, addr):
-        return self.mem.get(addr, 'Invalid Address at rd operation')
+        return self.mem.get(addr, random.randint(1 << 9, 1 << 99))
 
     def dc_store(self, addr, data):
         self.mem[addr] = data
