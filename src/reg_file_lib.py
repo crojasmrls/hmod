@@ -28,6 +28,10 @@ class RegFile:
                 self.rat_stack.remove(shadow_rat)
                 break
 
+    def print_register_file(self):
+        for (i, register) in enumerate(self.rat, start=0):
+            print(i, ':', register.value)
+
 
 class PhysicalRegister:
     def __init__(self, state=False, value=0):
