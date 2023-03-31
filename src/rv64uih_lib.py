@@ -43,6 +43,12 @@ class InstructionTable:
                 instr.p_dest.value = instr.decoded_fields.immediate
         elif len(instr.decoded_fields.sources) == 2:
             instr.p_dest.value = instr.p_sources[0].value + instr.p_sources[1].value
+        elif len(instr.decoded_fields.sources) == 1:
+            instr.p_dest.value = instr.p_sources[0].value
+
+    def exec_lui(instr):
+        instr.p_dest.value = \
+            instr.decoded_fields.immediate << (12)
 
     def exec_sll(instr):
         instr.p_dest.value = \
@@ -65,24 +71,36 @@ class InstructionTable:
 
     def exec_equ(instr):
         instr.branch_result = instr.p_sources[0].value == instr.p_sources[1].value
+    def exec_equz(instr):
+        instr.branch_result = instr.p_sources[0].value == 0
+    def exec_less(instr):
+        instr.branch_result = instr.p_sources[0].value < instr.p_sources[1].value
+    def exec_true(instr):
+        instr.branch_result = True
     # Table of tuples
     Instructions = \
         {
             # INT   Instruction         destination  n_sources immediate     pipelined latency computation
-            'add':  (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_add),
-            'addi': (InstrLabel.INT,    True,        1,        True,         True,     1,      exec_add),
-            'li':   (InstrLabel.INT,    True,        0,        True,         True,     1,      exec_add),
-            'sll':  (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_sll),
-            'slt':  (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_slt),
-            'nop':  (InstrLabel.INT,    False,       0,        False,        True,     1,      exec_add),
+            'add':   (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_add),
+            'mv':    (InstrLabel.INT,    True,        1,        False,        True,     1,      exec_add),
+            'addi':  (InstrLabel.INT,    True,        1,        True,         True,     1,      exec_add),
+            'addiw': (InstrLabel.INT,    True,        1,        True,         True,     1,      exec_add),
+            'li':    (InstrLabel.INT,    True,        0,        True,         True,     1,      exec_add),
+            'lui':   (InstrLabel.INT,    True,        0,        True,         True,     1,      exec_lui),
+            'sll':   (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_sll),
+            'slt':   (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_slt),
+            'nop':   (InstrLabel.INT,    False,       0,        False,        True,     1,      exec_add),
             # MEM  Instruction         destination  n_sources immediate     pipelined latency computation width
-            'sd':   (InstrLabel.STORE,  False,       2,        True,         True,     1,      exec_addr,   64),
-            'ld':   (InstrLabel.LOAD,   True,        1,        True,         True,     1,      exec_addr,   64),
+            'sd':    (InstrLabel.STORE,  False,       2,        True,         True,     1,      exec_addr,   64),
+            'ld':    (InstrLabel.LOAD,   True,        1,        True,         True,     1,      exec_addr,   64),
             # Branch Instruction       destination  n_sources immediate     pipelined latency computation width
-            'bne':  (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_nequ),
-            'beq':  (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_equ),
+            'bne':   (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_nequ),
+            'beq':   (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_equ),
+            'bltu':  (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_less),
+            'beqz':  (InstrLabel.BRANCH, False,       1,        False,        True,     1,      exec_equz),
+            'j':     (InstrLabel.BRANCH, False,       0,        False,        True,     1,      exec_true),
             # HILAR
-            'new':  (InstrLabel.HILAR, True)}
+            'new':   (InstrLabel.HILAR, True)}
 
 
 class DecodedFields:
