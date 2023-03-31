@@ -77,9 +77,9 @@ class Instr(sim.Component):
             self.resources.RobInst.store_next2commit(self)
             # Wake-up at EXE stage
             # Do computation
+            self.decoded_fields.instr_tuple[dec.INTFields.EXEC](self)
             #Back to back issue
             if self.decoded_fields.instr_tuple[dec.INTFields.LATENCY] == 1:
-                self.decoded_fields.instr_tuple[dec.INTFields.EXEC](self)
                 if self.decoded_fields.instr_tuple[dec.INTFields.DEST]:  # Set executed bit
                     self.p_dest.reg_state.set(True)
             yield self.hold(1)  # Hold for rre stage
@@ -87,7 +87,6 @@ class Instr(sim.Component):
             for x in range(self.decoded_fields.instr_tuple[dec.INTFields.LATENCY]):
                 if self.decoded_fields.instr_tuple[dec.INTFields.LATENCY] > 1:
                     if self.decoded_fields.instr_tuple[dec.INTFields.LATENCY] - x - 2 == 0:
-                        self.decoded_fields.instr_tuple[dec.INTFields.EXEC](self)
                         if self.decoded_fields.instr_tuple[dec.INTFields.DEST]:  # Set executed bit
                                 self.p_dest.reg_state.set(True)
                         if not self.decoded_fields.instr_tuple[dec.INTFields.PIPELINED]:
