@@ -96,12 +96,13 @@ class Instr(sim.Component):
             self.konata_signature.print_stage('WUP', 'ISS', self.thread_id, self.instr_id)
             yield self.hold(1)  # Hold for issue stage
         # Release FU
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.INT:
-            self.release((self.resources.int_units, 1))
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
-            self.release((self.resources.branch_units, 1))
-            if self.params.branch_in_int_alu:
+        if self.decoded_fields.instr_tuple[dec.INTFields.PIPELINED]:
+            if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.INT:
                 self.release((self.resources.int_units, 1))
+            if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
+                self.release((self.resources.branch_units, 1))
+                if self.params.branch_in_int_alu:
+                    self.release((self.resources.int_units, 1))
         # Store locks untill it is the next head of the ROB
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE \
                 and self.resources.RobInst.instr_end(self) and not self.back2back:
