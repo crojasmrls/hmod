@@ -42,7 +42,7 @@ class InstructionTable:
             else:
                 instr.p_dest.value = instr.decoded_fields.immediate
         elif len(instr.decoded_fields.sources) == 2:
-            instr.p_dest.value = instr.p_sourcess[0].value + instr.p_sources[1].value
+            instr.p_dest.value = instr.p_sources[0].value + instr.p_sources[1].value
 
     def exec_sll(instr):
         instr.p_dest.value = \
