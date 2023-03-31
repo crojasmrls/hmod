@@ -21,6 +21,7 @@ class Instr(sim.Component):
         self.bp_tag_index = bp_tag_index
         self.flushed = False
         self.branch_result = False
+        self.bp_hit = None
         # L/S
         self.address = None
         self.data = None
@@ -33,11 +34,11 @@ class Instr(sim.Component):
         self.performance_counters = performance_counters
 
     def process(self):
-        yield self.hold(1) # Hold for fetch stage
+        yield self.hold(1)  # Hold for fetch stage
         yield self.request(self.resources.decode_ports)
         self.fetch_unit.release_fetch()
         self.konata_signature.print_stage('FET', 'DEC', self.thread_id, self.instr_id)
-        yield self.hold(1) # Hold for decode stage
+        yield self.hold(1)  # Hold for decode stage
         # Front end Resourses
         yield self.request(self.resources.rename_ports)
         yield self.request(self.resources.RobInst.rob_resource)
@@ -68,7 +69,7 @@ class Instr(sim.Component):
         yield self.hold(1)  # Hold for dispatch stage
         yield self.request(self.resources.int_alloc_ports)
         self.konata_signature.print_stage('DIS', 'ALL', self.thread_id, self.instr_id)
-        yield self.hold(1) # Hold for allocation stage
+        yield self.hold(1)  # Hold for allocation stage
         self.release((self.resources.int_alloc_ports, 1))
         # Queue stage
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.INT \
@@ -123,10 +124,10 @@ class Instr(sim.Component):
                 or self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
             self.konata_signature.print_stage('RRE', 'EXE', self.thread_id, self.instr_id)
             if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
-                bp_hit = (not self.branch_result and not self.bp_take_branch[0]) \
+                self.bp_hit = (not self.branch_result and not self.bp_take_branch[0]) \
                     or (self.branch_result and self.bp_take_branch[0]
                         and self.decoded_fields.branch_target == self.bp_take_branch[1])
-                if not bp_hit:
+                if not self.bp_hit:
                     self.resources.miss_branch = [True]
                     self.fetch_unit.flushed = True
                     if self.branch_result:
@@ -144,7 +145,7 @@ class Instr(sim.Component):
                             self.release((self.resources.int_units, 1))
                 yield self.hold(1)  # Hold for exe stage
             if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
-                self.resources.branch_predictor.write_entry(self.bp_tag_index[0], self.bp_tag_index[1], bp_hit,
+                self.resources.branch_predictor.write_entry(self.bp_tag_index[0], self.bp_tag_index[1], self.bp_hit,
                                                             self.decoded_fields.branch_target)
                 if self.params.exe_brob_release:
                     self.resources.RegisterFileInst.release_shadow_rat(self)
@@ -167,7 +168,7 @@ class Instr(sim.Component):
                     else:
                         self.p_dest.value = self.resources.DataCacheInst.dc_load(self.address)
                     self.p_dest.reg_state.set(True)
-                yield self.hold(1)# Hold for mem stage
+                yield self.hold(1)  # Hold for mem stage
             if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
                 self.resources.DataCacheInst.dc_store(self.address, self.p_sources[0].value)
                 self.data = self.p_sources[0].value
