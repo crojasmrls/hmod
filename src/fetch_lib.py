@@ -50,6 +50,7 @@ class InstrCache(sim.Component):
         for line in lines:
             line_number += 1
             line = line.replace("\n", "")
+            line = line.replace("\t", " ")
             line = line.split('#')[0]
             # If the line is a code segment tag
             if line.find(':') != -1:
