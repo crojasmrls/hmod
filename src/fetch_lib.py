@@ -88,16 +88,19 @@ class InstrCache(sim.Component):
         else:
             bp_tag_index = 0, 0
             self.bp_take_branch = False, None
-        new_instr = instr.Instr(decoded_fields=dec.DecodedFields(instruction=self.bb_dict[self.bb_name].instr[self.offset][0],
-                                line_number=self.bb_dict[self.bb_name].instr[self.offset][1]), params=self.params,
-                                resources=self.resources,  thread_id=self.thread_id, instr_id=self.instr_id,
-                                konata_signature=self.konata_signature, performance_counters=self.performance_counters,
-                                fetch_unit=self, bb_name=self.bb_name,
-                                offset=self.offset, bp_take_branch=self.bp_take_branch, bp_tag_index=bp_tag_index,
-                                priority=0)
+        new_instr = instr.Instr(
+            decoded_fields=dec.DecodedFields(instruction=self.bb_dict[self.bb_name].instr[self.offset][0],
+                                             line_number=self.bb_dict[self.bb_name].instr[self.offset][1]),
+            params=self.params, resources=self.resources,  thread_id=self.thread_id, instr_id=self.instr_id,
+            konata_signature=self.konata_signature, performance_counters=self.performance_counters, fetch_unit=self,
+            bb_name=self.bb_name, offset=self.offset, bp_take_branch=self.bp_take_branch, bp_tag_index=bp_tag_index,
+            priority=0
+        )
         self.resources.RobInst.add_instr(new_instr)
-        self.konata_signature.new_instr(self.thread_id, self.instr_id, self.bb_dict[self.bb_name].instr[self.offset][1],
-                                        self.bb_dict[self.bb_name].instr[self.offset][0])
+        self.konata_signature.new_instr(
+            self.thread_id, self.instr_id, self.bb_dict[self.bb_name].instr[self.offset][1],
+            self.bb_dict[self.bb_name].instr[self.offset][0]
+        )
 
     @staticmethod
     def bp_tag_index(line_number, bp_entries):
