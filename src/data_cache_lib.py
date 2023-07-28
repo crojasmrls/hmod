@@ -12,5 +12,5 @@ class DataCache:
         self.mem[addr] = data
 
     def print_data_cache(self):
-        for addr, data in self.mem.items():
+        for addr, data in sorted(self.mem.items()):
             print(addr, ':', data)
