@@ -10,6 +10,7 @@ import counters_lib as pec
 program1 = 'risc-assembly/stores.asm'
 program2 = 'risc-assembly/add.asm'
 program3 = 'risc-assembly/bublesort.asm'
+program4 = 'risc-assembly/bubble_sort_compiler_explorer.asm'
 konata_out = 'konata_signature.txt'
 torture_out = 'torture_signature.sig'
 cycles = 5000
@@ -47,6 +48,6 @@ print("Simulated cycles per second:",
 print("Simulated instructions per second:",
       round(PEInst0.InstrCacheInst.instr_id/(end-start), 2))
 print("Data cache dump:")
-PEInst0.ResInst.DataCacheInst.print_data_cache()
+PEInst0.DataCacheInst.print_data_cache()
 if perf_counters_en:
     PerformanceCountersInst.print_metrics()

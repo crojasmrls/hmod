@@ -5,12 +5,13 @@ from reg_file_lib import PhysicalRegister
 
 class Instr(sim.Component):
     def setup(self, decoded_fields, params, resources, konata_signature, performance_counters, thread_id,
-              instr_id, fetch_unit, bb_name, offset, bp_take_branch, bp_tag_index):
+              instr_id, fetch_unit, data_cache, bb_name, offset, bp_take_branch, bp_tag_index):
         self.decoded_fields = decoded_fields
         self.params = params
         # Resources pointer
         self.resources = resources
         self.fetch_unit = fetch_unit
+        self.data_cache = data_cache
         # Registers
         self.p_sources = []
         self.p_dest = None
@@ -165,13 +166,13 @@ class Instr(sim.Component):
                         if next_store.address == self.address:
                             self.p_dest.value = next_store.p_sources[0].value
                         else:
-                            self.p_dest.value = self.resources.DataCacheInst.dc_load(self.address)
+                            self.p_dest.value = self.data_cache.dc_load(self.address)
                     else:
-                        self.p_dest.value = self.resources.DataCacheInst.dc_load(self.address)
+                        self.p_dest.value = self.data_cache.dc_load(self.address)
                     self.p_dest.reg_state.set(True)
                 yield self.hold(1)  # Hold for mem stage
             if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
-                self.resources.DataCacheInst.dc_store(self.address, self.p_sources[0].value)
+                self.data_cache.dc_store(self.address, self.p_sources[0].value)
                 self.data = self.p_sources[0].value
         if self.decoded_fields.instr_tuple[dec.INTFields.DEST]:
             self.data = self.p_dest.value

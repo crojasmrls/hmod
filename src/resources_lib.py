@@ -2,7 +2,6 @@ import salabim as sim
 import reorderbuffer_lib as rob
 import reg_file_lib as rf
 import lsq_lib as lsq
-import data_cache_lib as dc
 import bp_lib as bp
 
 
@@ -16,7 +15,6 @@ class Resources:
         self.branch_units = sim.Resource('branch_units', capacity=self.params.branch_units)
         self.int_queue = sim.Resource('int_queue', capacity=self.params.int_queue_slots)
         self.LoadStoreQueueInst = lsq.LoadStoreQueue(lsu_slots=self.params.lsu_slots)
-        self.DataCacheInst = dc.DataCache()
         self.brob_resource = sim.Resource('brob_resource', capacity=self.params.brob_entries)
         self.decode_ports = sim.Resource('decode_ports', capacity=self.params.fetch_width)
         # This resource is used to serialize teh renaming procces
