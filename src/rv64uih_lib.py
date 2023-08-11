@@ -30,7 +30,7 @@ class INTFields(IntEnum):
     PIPELINED = 4
     LATENCY = 5
     EXEC = 6
-    WIDTH = 7
+    N_BYTES = 7
 
 
 class InstructionTable:
@@ -90,10 +90,10 @@ class InstructionTable:
             'sll':   (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_sll),
             'slt':   (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_slt),
             'nop':   (InstrLabel.INT,    False,       0,        False,        True,     1,      exec_add),
-            # MEM  Instruction         destination  n_sources immediate     pipelined latency computation width
-            'sd':    (InstrLabel.STORE,  False,       2,        True,         True,     1,      exec_addr,   64),
-            'ld':    (InstrLabel.LOAD,   True,        1,        True,         True,     1,      exec_addr,   64),
-            # Branch Instruction       destination  n_sources immediate     pipelined latency computation width
+            # MEM  Instruction         destination  n_sources immediate     pipelined latency computation n_bytes
+            'sd':    (InstrLabel.STORE,  False,       2,        True,         True,     1,      exec_addr,   8),
+            'ld':    (InstrLabel.LOAD,   True,        1,        True,         True,     1,      exec_addr,   8),
+            # Branch Instruction       destination  n_sources immediate     pipelined latency computation
             'bne':   (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_nequ),
             'beq':   (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_equ),
             'bltu':  (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_less),
