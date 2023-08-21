@@ -228,6 +228,6 @@ class Instr(sim.Component):
         if self.resources.finished:
             self.resources.finished = False
         if self.fetch_unit.ispassive():
-            self.fetch_unit.bb_name = self.fetch_unit.send_first_bb()
+            self.fetch_unit.bb_name = self.fetch_unit.instr_cache.get_first_bb()
             self.fetch_unit.offset = 0
             self.fetch_unit.activate()

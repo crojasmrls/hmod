@@ -3,10 +3,6 @@ class ASMParser:
         self.data_cache = data_cache
         self.instr_cache = instr_cache
 
-    def add_instr(self, new_instr):
-        self.instr.append(new_instr)
-
-
     def read_program(self, program):
         bb_name_prev = ''
         bb_name = ''
@@ -25,8 +21,7 @@ class ASMParser:
                 # Remove the code segment tag indicator
                 bb_name = line.split(':')[0].split()[0]
                 if len(bb_name) != 0:
-                    self.instr_cache.add_bb(bb_name,bb_name_prev)
-                    self.bb_dict[bb_name] = BasicInstrBlock(bb_name)
+                    self.instr_cache.add_bb(bb_name, bb_name_prev)
                     bb_name_prev = bb_name
             else:
                 if len(line.replace(" ", "")) != 0:

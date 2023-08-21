@@ -25,14 +25,15 @@ KonataSignatureInst = kon.KonataSignature(konata_out=konata_out, konata_dump_on=
 #
 PerformanceCountersInst = pec.PerformanceCounters(perf_counters_en)
 
-PEInst0 = pe.PE(params=params_1, program=program3, thread_id=0, konata_signature=KonataSignatureInst,
+PEInst0 = pe.PE(params=params_1, thread_id=0, konata_signature=KonataSignatureInst,
                 performance_counters=PerformanceCountersInst)
 # PEInst1 = pe.PE(fetch_width=2, physical_registers=64, int_alus=2, rob_entries=128,
 #                 int_queue_slots=16, lsu_slots=16, brob_entries=32,
 #                 program=program2, thread_id=1,
 #                 konata_signature=KonataSignatureInst)
 
-PEInst0.InstrCacheInst.read_program()
+PEInst0.ASMParserInst.read_program('../programs/' + program3)
+PEInst0.InstrCacheInst.print_program()
 # PEInst1.InstrCacheInst.read_program()
 
 # record start time
@@ -42,11 +43,11 @@ env.run(till=cycles)
 end = time.time()
 print("Execution time: ", round(end-start, 2), "s")
 print("Cycles: ", cycles)
-print("Instructions: ", PEInst0.InstrCacheInst.instr_id)
+print("Instructions: ", PEInst0.FetchUnitInst.instr_id)
 print("Simulated cycles per second:",
       round(cycles/(end-start), 2))
 print("Simulated instructions per second:",
-      round(PEInst0.InstrCacheInst.instr_id/(end-start), 2))
+      round(PEInst0.FetchUnitInst.instr_id/(end-start), 2))
 print("Data cache dump:")
 PEInst0.DataCacheInst.print_data_cache()
 if perf_counters_en:
