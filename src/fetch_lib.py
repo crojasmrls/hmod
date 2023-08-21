@@ -5,7 +5,6 @@ import instr_lib as ins
 
 
 class FetchUnit(sim.Component):
-    """docstring for InstrCache"""
     def setup(self, instr_cache, params, resources, thread_id, konata_signature, performance_counters, data_cache):
         self.instr_cache = instr_cache
         self.params = params
