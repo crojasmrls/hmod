@@ -35,6 +35,7 @@ class INTFields(IntEnum):
 
 class InstructionTable:
     # Compute functions
+    @staticmethod
     def exec_add(instr):
         if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
             if len(instr.decoded_fields.sources) >= 1:
@@ -46,35 +47,47 @@ class InstructionTable:
         elif len(instr.decoded_fields.sources) == 1:
             instr.p_dest.value = instr.p_sources[0].value
 
+    @staticmethod
     def exec_lui(instr):
         instr.p_dest.value = \
-            instr.decoded_fields.immediate << (12)
+            instr.decoded_fields.immediate << 12
 
+    @staticmethod
     def exec_sll(instr):
         instr.p_dest.value = \
             instr.p_sources[0].value << (instr.p_sources[1].value & 0x1f)
 
+    @staticmethod
     def exec_slt(instr):
         if instr.p_sources[0].value < instr.p_sources[1].value:
             instr.p_dest.value = 1
         else:
             instr.p_dest.value = 0
 
+    @staticmethod
     def exec_addr(instr):
         if instr.decoded_fields.instr_tuple[INTFields.LABEL] == InstrLabel.LOAD:
             instr.address = instr.p_sources[0].value + instr.decoded_fields.immediate
         else:
             instr.address = instr.p_sources[1].value + instr.decoded_fields.immediate
 
+    @staticmethod
     def exec_nequ(instr):
         instr.branch_result = instr.p_sources[0].value != instr.p_sources[1].value
 
+    @staticmethod
     def exec_equ(instr):
         instr.branch_result = instr.p_sources[0].value == instr.p_sources[1].value
+
+    @staticmethod
     def exec_equz(instr):
         instr.branch_result = instr.p_sources[0].value == 0
+
+    @staticmethod
     def exec_less(instr):
         instr.branch_result = instr.p_sources[0].value < instr.p_sources[1].value
+
+    @staticmethod
     def exec_true(instr):
         instr.branch_result = True
     # Table of tuples
