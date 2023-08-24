@@ -53,15 +53,13 @@ class Instr(sim.Component):
             self.p_dest = PhysicalRegister(state=False, value=self.decoded_fields.dest)
             self.resources.RegisterFileInst.set_reg(self.decoded_fields.dest, self.p_dest)
         # Create RAT chekpoit
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.BRANCH:
             self.resources.RegisterFileInst.push_rat(self)
         # Request Instruction Queue slot
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.INT \
-                or self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.ARITH_INT:
             yield self.request(self.resources.int_queue)
         # Request LSU slot
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD \
-                or self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.LS:
             yield self.request(self.resources.LoadStoreQueueInst.lsu_slots)
         self.release((self.resources.rename_resource, 1))
         yield self.hold(1)  # Hold for renaming stage
@@ -73,11 +71,9 @@ class Instr(sim.Component):
         yield self.hold(1)  # Hold for allocation stage
         self.release((self.resources.int_alloc_ports, 1))
         # Queue stage
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.INT \
-                or self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.ARITH:
             self.konata_signature.print_stage('ALL', 'QUE', self.thread_id, self.instr_id)
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD \
-                or self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.LS:
             self.konata_signature.print_stage('ALL', 'LSB', self.thread_id, self.instr_id)
             # Request of cache port
             yield self.request(self.resources.cache_ports)
@@ -86,26 +82,25 @@ class Instr(sim.Component):
             yield self.wait(x.reg_state)
         self.konata_signature.print_stage('QUE', 'WUP', self.thread_id, self.instr_id)
         # FU request
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.INT:
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.INT:
             yield self.request(self.resources.int_units)
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.BRANCH:
             yield self.request(self.resources.branch_units)
             if self.params.branch_in_int_alu:
                 yield self.request(self.resources.int_units)
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.INT \
-                or self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.ARITH:
             self.konata_signature.print_stage('WUP', 'ISS', self.thread_id, self.instr_id)
             yield self.hold(1)  # Hold for issue stage
         # Release FU
         if self.decoded_fields.instr_tuple[dec.INTFields.PIPELINED]:
-            if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.INT:
+            if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.INT:
                 self.release((self.resources.int_units, 1))
-            if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
+            if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.BRANCH:
                 self.release((self.resources.branch_units, 1))
                 if self.params.branch_in_int_alu:
                     self.release((self.resources.int_units, 1))
         # Store locks untill it is the next head of the ROB
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE \
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE \
                 and self.resources.RobInst.instr_end(self) and not self.back2back:
             self.resources.store_state.set(False)
             self.konata_signature.print_stage('WUP', 'LCK', self.thread_id, self.instr_id)
@@ -115,17 +110,16 @@ class Instr(sim.Component):
         # the issue latencies are controlled to match the pipeline latencies
         self.decoded_fields.instr_tuple[dec.INTFields.EXEC](self)
         # Back to back issue arithmetic of latency 1
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.INT \
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.INT \
                 and self.decoded_fields.instr_tuple[dec.INTFields.DEST] \
                 and self.decoded_fields.instr_tuple[dec.INTFields.LATENCY] == 1:
             self.p_dest.reg_state.set(True)
         # Back to back issue of stores, It checks if a store is the following instruction in the ROB
         self.resources.RobInst.store_next2commit(self)
         yield self.hold(1)  # Hold for rre stage
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.INT \
-                or self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.ARITH:
             self.konata_signature.print_stage('RRE', 'EXE', self.thread_id, self.instr_id)
-            if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
+            if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.BRANCH:
                 self.bp_hit = (not self.branch_result and not self.bp_take_branch[0]) \
                     or (self.branch_result and self.bp_take_branch[0]
                         and self.decoded_fields.branch_target == self.bp_take_branch[1])
@@ -146,19 +140,18 @@ class Instr(sim.Component):
                         if not self.decoded_fields.instr_tuple[dec.INTFields.PIPELINED]:
                             self.release((self.resources.int_units, 1))
                 yield self.hold(1)  # Hold for exe stage
-            if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
+            if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.BRANCH:
                 self.resources.branch_predictor.write_entry(self.bp_tag_index[0], self.bp_tag_index[1], self.bp_hit,
                                                             self.decoded_fields.branch_target)
                 if self.params.exe_brob_release:
                     self.resources.RegisterFileInst.release_shadow_rat(self)
             self.release((self.resources.int_queue, 1))
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD \
-                or self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.LS:
             self.konata_signature.print_stage('RRE', 'MEM', self.thread_id, self.instr_id)
             self.release((self.resources.cache_ports, 1))
             for x in range(self.params.l1_dcache_latency):
                 # Execute load a wake-up dependencies 2 cycles before finishing load.
-                if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.LOAD\
+                if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD\
                         and x+2 == self.params.l1_dcache_latency:
                     next_store = self.resources.RobInst.store_next(self)
                     # Store to Load forwarding
@@ -171,7 +164,7 @@ class Instr(sim.Component):
                         self.p_dest.value = self.data_cache.dc_load(self.address)
                     self.p_dest.reg_state.set(True)
                 yield self.hold(1)  # Hold for mem stage
-            if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.STORE:
+            if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE:
                 self.data_cache.dc_store(self.address, self.p_sources[0].value)
                 self.data = self.p_sources[0].value
         if self.decoded_fields.instr_tuple[dec.INTFields.DEST]:
@@ -204,7 +197,7 @@ class Instr(sim.Component):
             self.release((resource, 1))
         # Remove RAT shadow copy when is a branch
         if not self.params.exe_brob_release and \
-                self.decoded_fields.instr_tuple[dec.INTFields.LABEL] == dec.InstrLabel.BRANCH:
+                self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.BRANCH:
             self.resources.RegisterFileInst.release_shadow_rat(self)
         if self.resources.finished and (self.resources.RobInst.rob_list == []):
             print('Program end')

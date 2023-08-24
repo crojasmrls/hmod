@@ -1,4 +1,4 @@
-from enum import IntEnum, Enum, auto
+from enum import IntEnum, Flag, auto
 
 
 class IntRegisterTable:  # Register map of the micro architecture
@@ -12,7 +12,7 @@ class IntRegisterTable:  # Register map of the micro architecture
                  't3': 28, 't4': 29, 't5': 30, 't6': 31}
 
 
-class InstrLabel(Enum):
+class InstrLabel(Flag):
     INT = auto()
     FP = auto()
     HILAR = auto()
@@ -20,6 +20,9 @@ class InstrLabel(Enum):
     LOAD = auto()
     STORE = auto()
     BRANCH = auto()
+    LS = LOAD | STORE
+    ARITH_INT = INT | BRANCH
+    ARITH = ARITH_INT | FP
 
 
 class INTFields(IntEnum):
@@ -66,7 +69,7 @@ class InstructionTable:
 
     @staticmethod
     def exec_addr(instr):
-        if instr.decoded_fields.instr_tuple[INTFields.LABEL] == InstrLabel.LOAD:
+        if instr.decoded_fields.instr_tuple[INTFields.LABEL] is InstrLabel.LOAD:
             instr.address = instr.p_sources[0].value + instr.decoded_fields.immediate
         else:
             instr.address = instr.p_sources[1].value + instr.decoded_fields.immediate
@@ -135,7 +138,7 @@ class DecodedFields:
         except KeyError:
             print("NameError: Not supported instruction")
             raise
-        if self.instr_tuple[INTFields.LABEL] == InstrLabel.INT:
+        if self.instr_tuple[INTFields.LABEL] is InstrLabel.INT:
             if self.instr_tuple[INTFields.DEST]:
                 try:
                     self.dest = IntRegisterTable.registers[parsed_instr.pop(0)]
@@ -155,8 +158,7 @@ class DecodedFields:
                     print("NameError: Invalid immediate")
                     raise
         # MEM parse data source or destination, addr base source and immediate
-        if self.instr_tuple[INTFields.LABEL] == InstrLabel.STORE \
-                or self.instr_tuple[INTFields.LABEL] == InstrLabel.LOAD:
+        if self.instr_tuple[INTFields.LABEL] in InstrLabel.LS:
             if self.instr_tuple[INTFields.DEST]:
                 try:
                     self.dest = IntRegisterTable.registers[parsed_instr.pop(0)]
@@ -182,7 +184,7 @@ class DecodedFields:
                 print("NameError: Invalid source register")
                 raise
         # Branch fields
-        if self.instr_tuple[INTFields.LABEL] == InstrLabel.BRANCH:
+        if self.instr_tuple[INTFields.LABEL] is InstrLabel.BRANCH:
             for x in range(self.instr_tuple[INTFields.N_SOURCES]):
                 try:
                     self.sources.append(IntRegisterTable.registers[parsed_instr.pop(0)])
