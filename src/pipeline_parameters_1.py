@@ -16,3 +16,10 @@ class PipelineParams:
     branch_predictor = 'bimodal_predictor'
     bp_entries = 128
     perf_counters_en = True
+
+
+class MemoryMap:
+    TEXT = 0x100e8
+    MAIN = 0x10108
+    RODATA = 0x1c7c0
+    DATA = 0x1e6e0
