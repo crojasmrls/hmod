@@ -59,6 +59,7 @@ class ASMParser:
                             line = self.replace_low(line, immediate)
                         self.instr_cache.add_instr(bb_name, (line, line_number))
                         instr_count = instr_count + 1
+
             else:
                 if 'main:' in line:
                     section = Sections.MAIN
@@ -67,6 +68,10 @@ class ASMParser:
                     bb_name = self.get_tag_name(line)
                     self.instr_cache.add_bb(bb_name, bb_name_prev)
                     bb_name_prev = bb_name
+        try:
+            self.instr_cache.get_next_block('END')
+        except KeyError:
+            self.instr_cache.add_bb('END', bb_name_prev)
 
     def fill_data(self, program, mem_map):
         section = Sections.HEAD
