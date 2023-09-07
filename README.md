@@ -20,6 +20,9 @@ For executing a simulation, it is necessary to run the main file `read-pseudocod
 - IPC counter
 - [Konata](https://github.com/shioyadan/Konata) tracer Support
 
+## Authors
+
+See [AUTHORS.md](./AUTHORS.md)
 
 ## Code of Conduct
 
