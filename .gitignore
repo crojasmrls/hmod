@@ -1,5 +1,7 @@
 konata_signature.txt
-torture_signature.sig
+*.sig
 *.idea*
 *__pycache__*
+*.riscv*
+*.s
 
