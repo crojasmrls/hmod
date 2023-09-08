@@ -115,8 +115,11 @@ class InstructionTable:
             'bltu':  (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_less),
             'beqz':  (InstrLabel.BRANCH, False,       1,        False,        True,     1,      exec_equz),
             'j':     (InstrLabel.BRANCH, False,       0,        False,        True,     1,      exec_true),
+            'jr':    (InstrLabel.CALL,   False,       0,        False,        True,     1,      exec_add),
             # HILAR
-            'new':   (InstrLabel.HILAR, True)}
+            'new':   (InstrLabel.HILAR,  False,       0,        False,        True,     1,      exec_add),
+            # CALLS
+            'call':  (InstrLabel.CALL,   False,       0,        False,        True,     1,      exec_add)}
 
 
 class DecodedFields:
