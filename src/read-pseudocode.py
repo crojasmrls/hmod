@@ -10,13 +10,14 @@ import counters_lib as pec
 program1 = 'risc-assembly/stores.asm'
 program2 = 'risc-assembly/add.asm'
 program3 = 'risc-assembly/bublesort.asm'
-program4 = 'risc-assembly/bubble_sort_compiler_explorer.asm'
+program4 = 'c_implementations/bubblesort/bubblesort.s'
 konata_out = 'konata_signature.txt'
 torture_out = 'torture_signature.sig'
 cycles = 5000
 konata_dump_on = True
 torture_dump_on = True
 params_1 = par1.PipelineParams
+mem_map_1 = par1.MemoryMap
 perf_counters_en = params_1.perf_counters_en
 env = sim.Environment(trace=False)
 #
@@ -32,7 +33,7 @@ PEInst0 = pe.PE(params=params_1, thread_id=0, konata_signature=KonataSignatureIn
 #                 program=program2, thread_id=1,
 #                 konata_signature=KonataSignatureInst)
 
-PEInst0.ASMParserInst.read_program('../programs/' + program3)
+PEInst0.ASMParserInst.read_program('../programs/' + program4, mem_map_1)
 PEInst0.InstrCacheInst.print_program()
 # PEInst1.InstrCacheInst.read_program()
 
