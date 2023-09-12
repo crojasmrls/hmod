@@ -6,6 +6,12 @@ import pipeline_parameters_1 as par1
 import konata_lib as kon
 import counters_lib as pec
 
+# In recent version of Salabim it is necessary to disable the yieldless atribute to model with coroutines
+try:
+    sim.yieldless(False)
+except AttributeError:
+    pass
+
 
 program1 = 'risc-assembly/stores.asm'
 program2 = 'risc-assembly/add.asm'
