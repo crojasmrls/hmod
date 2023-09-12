@@ -6,11 +6,17 @@ import pipeline_parameters_1 as par1
 import konata_lib as kon
 import counters_lib as pec
 
+# In recent version of Salabim it is necessary to disable the yieldless atribute to model with coroutines
+try:
+    sim.yieldless(False)
+except AttributeError:
+    pass
+
 
 program1 = 'risc-assembly/stores.asm'
 program2 = 'risc-assembly/add.asm'
 program3 = 'risc-assembly/bublesort.asm'
-program4 = 'c_implementations/bubblesort/bubblesort.s'
+program4 = 'c_implementations/bubblesort.s'
 konata_out = 'konata_signature.txt'
 torture_out = 'torture_signature.sig'
 cycles = 5000
@@ -33,7 +39,7 @@ PEInst0 = pe.PE(params=params_1, thread_id=0, konata_signature=KonataSignatureIn
 #                 program=program2, thread_id=1,
 #                 konata_signature=KonataSignatureInst)
 
-PEInst0.ASMParserInst.read_program('../programs/' + program4, mem_map_1)
+PEInst0.ASMParserInst.read_program('../risc-v-examples/' + program4, mem_map_1)
 PEInst0.InstrCacheInst.print_program()
 # PEInst1.InstrCacheInst.read_program()
 

@@ -1,0 +1,3 @@
+[submodule "risc-v-examples"]
+	path = risc-v-examples
+	url = git@gitlab.com:carlosrojo3000/risc-v-examples.git
