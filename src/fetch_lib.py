@@ -44,7 +44,7 @@ class InstrCache(sim.Component):
         bb_name_prev = ''
         bb_name = ''
         instr_count = 0
-        f = open('../programs/' + self.program, "r")
+        f = open('../risc-v-examples/' + self.program, "r")
         lines = f.readlines()
         line_number = 0
         for line in lines:
