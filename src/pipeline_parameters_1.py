@@ -13,13 +13,13 @@ class PipelineParams:
     branch_in_int_alu = True
     exe_brob_release = True
     bp_enable = True
-    branch_predictor = 'bimodal_predictor'
+    branch_predictor = "bimodal_predictor"
     bp_entries = 128
     perf_counters_en = True
 
 
 class MemoryMap:
-    TEXT = 0x100e8
+    TEXT = 0x100E8
     MAIN = 0x10108
-    RODATA = 0x1c7c0
-    DATA = 0x1e6e0
+    RODATA = 0x1C7C0
+    DATA = 0x1E6E0

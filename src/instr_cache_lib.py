@@ -1,8 +1,7 @@
-
 class BasicInstrBlock:
     def __init__(self, name):
         self.name = name
-        self.next_block = 'END'
+        self.next_block = "END"
         # Basic block instruction list
         self.instructions = []
 
@@ -19,7 +18,7 @@ class BasicInstrBlock:
 class InstrCache:
     def __init__(self):
         self.bb_dict = {}
-        self.first_block = ''
+        self.first_block = ""
 
     def add_bb(self, bb_name, bb_name_prev):
         if len(self.bb_dict) > 0:
@@ -42,10 +41,10 @@ class InstrCache:
 
     def print_program(self):
         bb_name = self.first_block
-        while bb_name != 'END':
+        while bb_name != "END":
             print(self.bb_dict[bb_name].name)
             for instr in self.bb_dict[bb_name].instructions:
-                print('    ' + instr[0])
+                print("    " + instr[0])
             bb_name = self.bb_dict[bb_name].next_block
 
     def get_first_bb(self):

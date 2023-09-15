@@ -3,7 +3,9 @@ import salabim as sim
 
 class RegFile:
     def __init__(self, physical_registers):
-        self.FRL_resource = sim.Resource('FRL_resource', capacity=physical_registers-32)
+        self.FRL_resource = sim.Resource(
+            "FRL_resource", capacity=physical_registers - 32
+        )
         self.rat = [PhysicalRegister(state=True, value=i) for i in range(32)]
         self.rat_stack = []
 
@@ -29,8 +31,8 @@ class RegFile:
                 break
 
     def print_register_file(self):
-        for (i, register) in enumerate(self.rat, start=0):
-            print(i, ':', register.value)
+        for i, register in enumerate(self.rat, start=0):
+            print(i, ":", register.value)
 
 
 class PhysicalRegister:

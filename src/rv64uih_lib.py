@@ -2,14 +2,40 @@ from enum import IntEnum, Flag, auto
 
 
 class IntRegisterTable:  # Register map of the micro architecture
-    registers = {'zero': 0, 'ra': 1, 'sp': 2, 'gp': 3,
-                 'tp': 4, 't0': 5, 't1': 6, 't2': 7,
-                 's0': 8, 's1': 9, 'a0': 10, 'a1': 11,
-                 'a2': 12, 'a3': 13, 'a4': 14, 'a5': 15,
-                 'a6': 16, 'a7': 17, 's2': 18, 's3': 19,
-                 's4': 20, 's5': 21, 's6': 22, 's7': 23,
-                 's8': 24, 's9': 25, 's10': 26, 's11': 27,
-                 't3': 28, 't4': 29, 't5': 30, 't6': 31}
+    registers = {
+        "zero": 0,
+        "ra": 1,
+        "sp": 2,
+        "gp": 3,
+        "tp": 4,
+        "t0": 5,
+        "t1": 6,
+        "t2": 7,
+        "s0": 8,
+        "s1": 9,
+        "a0": 10,
+        "a1": 11,
+        "a2": 12,
+        "a3": 13,
+        "a4": 14,
+        "a5": 15,
+        "a6": 16,
+        "a7": 17,
+        "s2": 18,
+        "s3": 19,
+        "s4": 20,
+        "s5": 21,
+        "s6": 22,
+        "s7": 23,
+        "s8": 24,
+        "s9": 25,
+        "s10": 26,
+        "s11": 27,
+        "t3": 28,
+        "t4": 29,
+        "t5": 30,
+        "t6": 31,
+    }
 
 
 class InstrLabel(Flag):
@@ -42,7 +68,9 @@ class InstructionTable:
     def exec_add(instr):
         if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
             if len(instr.decoded_fields.sources) >= 1:
-                instr.p_dest.value = instr.p_sources[0].value + instr.decoded_fields.immediate
+                instr.p_dest.value = (
+                    instr.p_sources[0].value + instr.decoded_fields.immediate
+                )
             else:
                 instr.p_dest.value = instr.decoded_fields.immediate
         elif len(instr.decoded_fields.sources) == 2:
@@ -52,13 +80,13 @@ class InstructionTable:
 
     @staticmethod
     def exec_lui(instr):
-        instr.p_dest.value = \
-            instr.decoded_fields.immediate << 12
+        instr.p_dest.value = instr.decoded_fields.immediate << 12
 
     @staticmethod
     def exec_sll(instr):
-        instr.p_dest.value = \
-            instr.p_sources[0].value << (instr.p_sources[1].value & 0x1f)
+        instr.p_dest.value = instr.p_sources[0].value << (
+            instr.p_sources[1].value & 0x1F
+        )
 
     @staticmethod
     def exec_slt(instr):
@@ -93,7 +121,9 @@ class InstructionTable:
     @staticmethod
     def exec_true(instr):
         instr.branch_result = True
+
     # Table of tuples
+    # fmt: off
     Instructions = \
         {
             # INT   Instruction         destination  n_sources immediate     pipelined latency computation
@@ -120,6 +150,7 @@ class InstructionTable:
             'new':   (InstrLabel.HILAR,  False,       0,        False,        True,     1,      exec_add),
             # CALLS
             'call':  (InstrLabel.CALL,   False,       0,        False,        True,     1,      exec_add)}
+    # fmt: on
 
 
 class DecodedFields:
@@ -135,7 +166,7 @@ class DecodedFields:
         self.set_fields()
 
     def set_fields(self):
-        parsed_instr = self.instruction.replace(',', ' ').split()
+        parsed_instr = self.instruction.replace(",", " ").split()
         try:
             self.instr_tuple = InstructionTable.Instructions[parsed_instr.pop(0)]
         except KeyError:
@@ -174,13 +205,13 @@ class DecodedFields:
                 except KeyError:
                     print("NameError: Invalid source register")
                     raise
-            parsed_instr = parsed_instr.pop(0).replace('(', ' ').split()
+            parsed_instr = parsed_instr.pop(0).replace("(", " ").split()
             try:
                 self.immediate = int(parsed_instr.pop(0))
             except ValueError:
                 print("NameError: Invalid immediate")
                 raise
-            parsed_instr = parsed_instr.pop(0).split(')')[0]
+            parsed_instr = parsed_instr.pop(0).split(")")[0]
             try:
                 self.sources.append(IntRegisterTable.registers[parsed_instr])
             except KeyError:
@@ -195,6 +226,7 @@ class DecodedFields:
                     print("NameError: Invalid source register")
                     raise
             self.branch_target = parsed_instr.pop(0)
+
 
 # # Not used
 

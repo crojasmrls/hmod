@@ -25,8 +25,8 @@ class ASMParser:
 
     def read_program(self, program, mem_map):
         self.fill_data(program, mem_map)
-        bb_name_prev = ''
-        bb_name = ''
+        bb_name_prev = ""
+        bb_name = ""
         instr_count = 0
         lines = self.get_file_lines(program)
         line_number = 0
@@ -36,9 +36,9 @@ class ASMParser:
             line = self.clean_line(line)
             # If the line is a code segment tag
             if section is Sections.MAIN:
-                if '.-main' in line:
+                if ".-main" in line:
                     break
-                if ':' in line:
+                if ":" in line:
                     instr_count = 0
                     # Remove the code segment tag indicator
                     bb_name = self.get_tag_name(line)
@@ -47,12 +47,12 @@ class ASMParser:
                         bb_name_prev = bb_name
                 else:
                     if len(line.replace(" ", "")) != 0:
-                        if '%hi' in line:
+                        if "%hi" in line:
                             address = self.get_address(line)
                             offset = self.get_offset(line)
                             immediate = self.get_hi(address, offset)
                             line = self.replace_high(line, immediate)
-                        if '%lo' in line:
+                        if "%lo" in line:
                             address = self.get_address(line)
                             offset = self.get_offset(line)
                             immediate = self.get_lo(address, offset)
@@ -61,7 +61,7 @@ class ASMParser:
                         instr_count = instr_count + 1
 
             else:
-                if 'main:' in line:
+                if "main:" in line:
                     section = Sections.MAIN
                     instr_count = 0
                     # Remove the code segment tag indicator
@@ -69,9 +69,9 @@ class ASMParser:
                     self.instr_cache.add_bb(bb_name, bb_name_prev)
                     bb_name_prev = bb_name
         try:
-            self.instr_cache.get_next_block('END')
+            self.instr_cache.get_next_block("END")
         except KeyError:
-            self.instr_cache.add_bb('END', bb_name_prev)
+            self.instr_cache.add_bb("END", bb_name_prev)
 
     def fill_data(self, program, mem_map):
         section = Sections.HEAD
@@ -80,45 +80,45 @@ class ASMParser:
         for line in lines:
             line = self.clean_line(line)
             if section is Sections.DATA:
-                if '.set' in line:
+                if ".set" in line:
                     self.constant_dict[self.get_data_tag_name(line)] = address
-                elif '.dword' in line:
+                elif ".dword" in line:
                     self.data_cache.dc_store(address, self.get_int_data(line))
                     address += Bytes.DWORD.value
             if section is Sections.RODATA:
-                if '.data' in line:
+                if ".data" in line:
                     section = Sections.DATA
                     address = mem_map.DATA
-                elif '.set' in line:
+                elif ".set" in line:
                     self.constant_dict[self.get_data_tag_name(line)] = address
-                elif '.dword' in line:
+                elif ".dword" in line:
                     self.data_cache.dc_store(address, self.get_int_data(line))
                     address += Bytes.DWORD.value
             elif section is Sections.MAIN:
-                if '.-main' in line:
+                if ".-main" in line:
                     section = Sections.RODATA
             elif section is Sections.TEXT:
-                if 'main:' in line:
+                if "main:" in line:
                     section = Sections.MAIN
-                elif ':' in line.split('"')[0]:
+                elif ":" in line.split('"')[0]:
                     self.constant_dict[self.get_tag_name(line)] = address
-                elif '.string' in line:
+                elif ".string" in line:
                     self.data_cache.dc_store(address, self.get_string_data(line))
                     address += len(self.get_string_data(line))
             else:
-                if '.text' in line:
+                if ".text" in line:
                     section = Sections.TEXT
                     address = mem_map.RODATA
 
     def get_address(self, line):
-        tag = re.findall(r'\(([^$]*)\)', line)[0].split('+')[0].split()[0]
+        tag = re.findall(r"\(([^$]*)\)", line)[0].split("+")[0].split()[0]
         return self.constant_dict[tag]
 
     @staticmethod
     def get_offset(line):
-        tag = re.findall(r'\(([^$]*)\)', line)[0]
+        tag = re.findall(r"\(([^$]*)\)", line)[0]
         try:
-            offset = tag.split('+')[1]
+            offset = tag.split("+")[1]
         except IndexError:
             return 0
         else:
@@ -129,27 +129,27 @@ class ASMParser:
 
     @staticmethod
     def get_hi(address, offset):
-        return str(((address + offset) & 0xfffff000) >> 12)
+        return str(((address + offset) & 0xFFFFF000) >> 12)
 
     @staticmethod
     def get_lo(address, offset):
-        return str((address + offset) & 0x00000fff)
+        return str((address + offset) & 0x00000FFF)
 
     @staticmethod
     def replace_high(line, immediate):
-        return re.sub(r'%hi\(?(.*?)\)', immediate, line)
+        return re.sub(r"%hi\(?(.*?)\)", immediate, line)
 
     @staticmethod
     def replace_low(line, immediate):
-        return re.sub(r'%lo\(?(.*?)\)', immediate, line)
+        return re.sub(r"%lo\(?(.*?)\)", immediate, line)
 
     @staticmethod
     def get_tag_name(line):
-        return line.split(':')[0].split()[0]
+        return line.split(":")[0].split()[0]
 
     @staticmethod
     def get_data_tag_name(line):
-        return line.split(',')[0].split()[1]
+        return line.split(",")[0].split()[1]
 
     @staticmethod
     def get_string_data(line):
@@ -170,5 +170,5 @@ class ASMParser:
     def clean_line(line):
         line = line.replace("\n", "")
         line = line.replace("\t", " ")
-        line = line.split('#')[0]
+        line = line.split("#")[0]
         return line

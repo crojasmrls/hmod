@@ -21,9 +21,17 @@ class PE:
         # Instr cache
         self.InstrCacheInst = ic.InstrCache()
         # Program parser and memory initialization
-        self.ASMParserInst = par.ASMParser(data_cache=self.DataCacheInst, instr_cache=self.InstrCacheInst)
+        self.ASMParserInst = par.ASMParser(
+            data_cache=self.DataCacheInst, instr_cache=self.InstrCacheInst
+        )
         # Fetch engine
-        self.FetchUnitInst = fetch.FetchUnit(instr_cache=self.InstrCacheInst, params=params, resources=self.ResInst,
-                                             thread_id=self.thread_id, konata_signature=self.konata_signature,
-                                             performance_counters=self.performance_counters,
-                                             data_cache=self.DataCacheInst, priority=100)
+        self.FetchUnitInst = fetch.FetchUnit(
+            instr_cache=self.InstrCacheInst,
+            params=params,
+            resources=self.ResInst,
+            thread_id=self.thread_id,
+            konata_signature=self.konata_signature,
+            performance_counters=self.performance_counters,
+            data_cache=self.DataCacheInst,
+            priority=100,
+        )

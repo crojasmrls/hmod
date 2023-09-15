@@ -1,15 +1,25 @@
 import salabim as sim
 import rv64uih_lib as dec
 import instr_lib as ins
+
 # from watchpoints import watch
 
 
 class FetchUnit(sim.Component):
-    def setup(self, instr_cache, params, resources, thread_id, konata_signature, performance_counters, data_cache):
+    def setup(
+        self,
+        instr_cache,
+        params,
+        resources,
+        thread_id,
+        konata_signature,
+        performance_counters,
+        data_cache,
+    ):
         self.instr_cache = instr_cache
         self.params = params
         self.offset = 0
-        self.bb_name = 'main'
+        self.bb_name = "main"
         self.branch_taken = False
         self.resources = resources
         self.thread_id = thread_id
@@ -26,19 +36,34 @@ class FetchUnit(sim.Component):
         instr = self.instr_cache.get_instr(self.bb_name, self.offset)
         if self.params.bp_enable:
             bp_tag_index = self.bp_tag_index(instr[1], self.params.bp_entries)
-            self.bp_take_branch = self.resources.branch_predictor.read_entry(bp_tag_index[0], bp_tag_index[1])
+            self.bp_take_branch = self.resources.branch_predictor.read_entry(
+                bp_tag_index[0], bp_tag_index[1]
+            )
         else:
             bp_tag_index = 0, 0
             self.bp_take_branch = False, None
         instr_inst = ins.Instr(
-            decoded_fields=dec.DecodedFields(instruction=instr[0], line_number=instr[1]),
-            params=self.params, resources=self.resources,  thread_id=self.thread_id, instr_id=self.instr_id,
-            konata_signature=self.konata_signature, performance_counters=self.performance_counters, fetch_unit=self,
-            data_cache=self.data_cache, bb_name=self.bb_name, offset=self.offset, bp_take_branch=self.bp_take_branch,
-            bp_tag_index=bp_tag_index, priority=0
+            decoded_fields=dec.DecodedFields(
+                instruction=instr[0], line_number=instr[1]
+            ),
+            params=self.params,
+            resources=self.resources,
+            thread_id=self.thread_id,
+            instr_id=self.instr_id,
+            konata_signature=self.konata_signature,
+            performance_counters=self.performance_counters,
+            fetch_unit=self,
+            data_cache=self.data_cache,
+            bb_name=self.bb_name,
+            offset=self.offset,
+            bp_take_branch=self.bp_take_branch,
+            bp_tag_index=bp_tag_index,
+            priority=0,
         )
         self.resources.RobInst.add_instr(instr_inst)
-        self.konata_signature.new_instr(self.thread_id, self.instr_id, instr[1], instr[0])
+        self.konata_signature.new_instr(
+            self.thread_id, self.instr_id, instr[1], instr[0]
+        )
 
     @staticmethod
     def bp_tag_index(line_number, bp_entries):
@@ -54,7 +79,7 @@ class FetchUnit(sim.Component):
     def process(self):
         # Condition to end fetch process, if the bb_name pointer reach END and the ROB is empty the fetch process
         # is terminated
-        while self.bb_name != 'END' or self.resources.RobInst.count_inst != 0:
+        while self.bb_name != "END" or self.resources.RobInst.count_inst != 0:
             # Request fetch width port
             yield self.request(self.resources.fetch_resource)
             if len(self.resources.miss_branch) != 0:
@@ -66,7 +91,7 @@ class FetchUnit(sim.Component):
                 else:
                     self.resources.branch_target.pop(0)
             # If fetch process reach end of file passivate it
-            if self.bb_name == 'END':
+            if self.bb_name == "END":
                 self.resources.finished = True
                 yield self.passivate()
             else:
@@ -87,7 +112,7 @@ class FetchUnit(sim.Component):
                     # Check if the basic block is empty
                     while self.instr_cache.get_block_len(self.bb_name) == 0:
                         # If fetch process reach end of file passivate it
-                        if self.bb_name == 'END':
+                        if self.bb_name == "END":
                             self.resources.finished = True
                             yield self.passivate()
                         self.bb_name = self.instr_cache.get_next_block(self.bb_name)
