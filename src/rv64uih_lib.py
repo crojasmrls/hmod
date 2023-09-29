@@ -62,7 +62,7 @@ class INTFields(IntEnum):
     N_BYTES = 7
 
 
-class InstructionTable:
+class ExeFuncts:
     # Compute functions
     @staticmethod
     def exec_add(instr):
@@ -122,34 +122,37 @@ class InstructionTable:
     def exec_true(instr):
         instr.branch_result = True
 
+
+class InstructionTable:
     # Table of tuples
     # fmt: off
     Instructions = \
         {
-            # INT   Instruction         destination  n_sources immediate     pipelined latency computation
-            'add':   (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_add),
-            'mv':    (InstrLabel.INT,    True,        1,        False,        True,     1,      exec_add),
-            'addi':  (InstrLabel.INT,    True,        1,        True,         True,     1,      exec_add),
-            'addiw': (InstrLabel.INT,    True,        1,        True,         True,     1,      exec_add),
-            'li':    (InstrLabel.INT,    True,        0,        True,         True,     1,      exec_add),
-            'lui':   (InstrLabel.INT,    True,        0,        True,         True,     1,      exec_lui),
-            'sll':   (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_sll),
-            'slt':   (InstrLabel.INT,    True,        2,        False,        True,     1,      exec_slt),
-            'nop':   (InstrLabel.INT,    False,       0,        False,        True,     1,      exec_add),
-            # MEM  Instruction         destination  n_sources immediate     pipelined latency computation n_bytes
-            'sd':    (InstrLabel.STORE,  False,       2,        True,         True,     1,      exec_addr,   8),
-            'ld':    (InstrLabel.LOAD,   True,        1,        True,         True,     1,      exec_addr,   8),
-            # Branch Instruction       destination  n_sources immediate     pipelined latency computation
-            'bne':   (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_nequ),
-            'beq':   (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_equ),
-            'bltu':  (InstrLabel.BRANCH, False,       2,        False,        True,     1,      exec_less),
-            'beqz':  (InstrLabel.BRANCH, False,       1,        False,        True,     1,      exec_equz),
-            'j':     (InstrLabel.BRANCH, False,       0,        False,        True,     1,      exec_true),
-            'jr':    (InstrLabel.CALL,   False,       0,        False,        True,     1,      exec_add),
-            # HILAR
-            'new':   (InstrLabel.HILAR,  False,       0,        False,        True,     1,      exec_add),
-            # CALLS
-            'call':  (InstrLabel.CALL,   False,       0,        False,        True,     1,      exec_add)}
+            # INT    label               destination n_sources immediate pipelined latency computation
+            'add':   (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_add),
+            'mv':    (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_add),
+            'addi':  (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_add),
+            'addiw': (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_add),
+            'li':    (InstrLabel.INT,    True,       0,        True,     True,     1,      ExeFuncts.exec_add),
+            'lui':   (InstrLabel.INT,    True,       0,        True,     True,     1,      ExeFuncts.exec_lui),
+            'sll':   (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sll),
+            'slt':   (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_slt),
+            'nop':   (InstrLabel.INT,    False,      0,        False,    True,     1,      ExeFuncts.exec_add),
+            # MEM    label               destination n_sources immediate pipelined latency computation          n_bytes
+            'sd':    (InstrLabel.STORE,  False,      2,        True,     True,     1,      ExeFuncts.exec_addr, 8),
+            'ld':    (InstrLabel.LOAD,   True,       1,        True,     True,     1,      ExeFuncts.exec_addr, 8),
+            # Branch label               destination n_sources immediate pipelined latency computation
+            'bne':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_nequ),
+            'beq':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_equ),
+            'bltu':  (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_less),
+            'beqz':  (InstrLabel.BRANCH, False,      1,        False,    True,     1,      ExeFuncts.exec_equz),
+            'j':     (InstrLabel.BRANCH, False,      0,        False,    True,     1,      ExeFuncts.exec_true),
+            'jr':    (InstrLabel.CALL,   False,      0,        False,    True,     1,      ExeFuncts.exec_add),
+            # HILAR  label               destination n_sources immediate pipelined latency computation
+            'new':   (InstrLabel.HILAR,  False,      0,        False,    True,     1,      ExeFuncts.exec_add),
+            # CALLS  label               destination n_sources immediate pipelined latency computation
+            'call':  (InstrLabel.CALL,   False,      0,        False,    True,     1,      ExeFuncts.exec_add)
+        }
     # fmt: on
 
 
