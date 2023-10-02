@@ -122,6 +122,10 @@ class ExeFuncts:
     def exec_true(instr):
         instr.branch_result = True
 
+    @staticmethod
+    def exec_nop(instr):
+        pass
+
 
 class InstructionTable:
     # Table of tuples
@@ -147,11 +151,11 @@ class InstructionTable:
             'bltu':  (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_less),
             'beqz':  (InstrLabel.BRANCH, False,      1,        False,    True,     1,      ExeFuncts.exec_equz),
             'j':     (InstrLabel.BRANCH, False,      0,        False,    True,     1,      ExeFuncts.exec_true),
-            'jr':    (InstrLabel.CALL,   False,      0,        False,    True,     1,      ExeFuncts.exec_add),
+            'jr':    (InstrLabel.CALL,   False,      0,        False,    True,     1,      ExeFuncts.exec_nop),
             # HILAR  label               destination n_sources immediate pipelined latency computation
-            'new':   (InstrLabel.HILAR,  False,      0,        False,    True,     1,      ExeFuncts.exec_add),
+            'new':   (InstrLabel.HILAR,  False,      0,        False,    True,     1,      ExeFuncts.exec_nop),
             # CALLS  label               destination n_sources immediate pipelined latency computation
-            'call':  (InstrLabel.CALL,   False,      0,        False,    True,     1,      ExeFuncts.exec_add)
+            'call':  (InstrLabel.CALL,   False,      1,        False,    True,     1,      ExeFuncts.exec_nop)
         }
     # fmt: on
 
@@ -166,6 +170,7 @@ class DecodedFields:
         self.immediate = None
         self.branch_target = None
         self.instr_tuple = None
+        self.call_code = None
         self.set_fields()
 
     def set_fields(self):
@@ -229,6 +234,20 @@ class DecodedFields:
                     print("NameError: Invalid source register")
                     raise
             self.branch_target = parsed_instr.pop(0)
+        # System calls
+        if self.instr_tuple[INTFields.LABEL] is InstrLabel.CALL:
+            self.call_code = parsed_instr.pop(0)
+            self.sources.append(IntRegisterTable.registers["a0"])
+
+
+class Calls:
+    # call functions
+    @staticmethod
+    def call_functions(instr):
+        return {
+            "printf": lambda: print(instr.data_cache.dc_load(instr.p_sources[0].value)),
+            "puts": lambda: print(instr.data_cache.dc_load(instr.p_sources[0].value)),
+        }.get(instr.decoded_fields.call_code, lambda: None)()
 
 
 # # Not used
@@ -247,7 +266,3 @@ class DecodedFields:
 
 # class HilarMethods:
 #     methods = ['insert', 'search', 'get_index', 'print_data']
-
-
-# class Calls:
-#     calls = ['cout']
