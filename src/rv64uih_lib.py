@@ -36,6 +36,7 @@ class IntRegisterTable:  # Register map of the micro architecture
         "t5": 30,
         "t6": 31,
     }
+    arg_registers = ["a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7"]
 
 
 class InstrLabel(Flag):
@@ -155,7 +156,7 @@ class InstructionTable:
             # HILAR  label               destination n_sources immediate pipelined latency computation
             'new':   (InstrLabel.HILAR,  False,      0,        False,    True,     1,      ExeFuncts.exec_nop),
             # CALLS  label               destination n_sources immediate pipelined latency computation
-            'call':  (InstrLabel.CALL,   False,      1,        False,    True,     1,      ExeFuncts.exec_nop)
+            'call':  (InstrLabel.CALL,   False,      8,        False,    True,     1,      ExeFuncts.exec_nop),
         }
     # fmt: on
 
@@ -237,7 +238,9 @@ class DecodedFields:
         # System calls
         if self.instr_tuple[INTFields.LABEL] is InstrLabel.CALL:
             self.call_code = parsed_instr.pop(0)
-            self.sources.append(IntRegisterTable.registers["a0"])
+            self.sources = [
+                IntRegisterTable.registers[i] for i in IntRegisterTable.arg_registers
+            ]
 
 
 class Calls:
@@ -245,9 +248,26 @@ class Calls:
     @staticmethod
     def call_functions(instr):
         return {
-            "printf": lambda: print(instr.data_cache.dc_load(instr.p_sources[0].value)),
-            "puts": lambda: print(instr.data_cache.dc_load(instr.p_sources[0].value)),
+            "printf": lambda: Calls.printf_call(
+                instr.p_sources.copy(), instr.data_cache
+            ),
+            "puts": lambda: Calls.puts_call(instr.p_sources.copy(), instr.data_cache),
         }.get(instr.decoded_fields.call_code, lambda: None)()
+
+    @staticmethod
+    def puts_call(sources, data_cache):
+        print(Calls.replace_end_line(data_cache.dc_load(sources[0].value)))
+
+    @staticmethod
+    def printf_call(sources, data_cache):
+        text = data_cache.dc_load(sources.pop(0).value)
+        while text.count("%d") != 0:
+            text = text.replace("%d", str(sources.pop(0).value), 1)
+        print(Calls.replace_end_line(text))
+
+    @staticmethod
+    def replace_end_line(text):
+        return text[::-1].replace("n\\", "", 1)[::-1].replace("\\n", "\n")
 
 
 # # Not used
