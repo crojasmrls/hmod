@@ -76,12 +76,16 @@ class ASMParser:
     def fill_data(self, program, mem_map):
         section = Sections.HEAD
         address = 0
+        tagged = False
         lines = self.get_file_lines(program)
         for line in lines:
             line = self.clean_line(line)
             if section is Sections.DATA:
                 if ".set" in line:
                     self.constant_dict[self.get_data_tag_name(line)] = address
+                    tagged = True
+                elif not tagged and ":" in line.split('"')[0]:
+                    self.constant_dict[self.get_tag_name(line)] = address
                 elif ".dword" in line:
                     self.data_cache.dc_store(address, self.get_int_data(line))
                     address += Bytes.DWORD.value
@@ -91,6 +95,8 @@ class ASMParser:
                     address = mem_map.DATA
                 elif ".set" in line:
                     self.constant_dict[self.get_data_tag_name(line)] = address
+                elif not tagged and ":" in line.split('"')[0]:
+                    self.constant_dict[self.get_tag_name(line)] = address
                 elif ".dword" in line:
                     self.data_cache.dc_store(address, self.get_int_data(line))
                     address += Bytes.DWORD.value
