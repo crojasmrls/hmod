@@ -80,14 +80,38 @@ class ExeFuncts:
             instr.p_dest.value = instr.p_sources[0].value
 
     @staticmethod
+    def exec_andbit(instr):
+        if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
+            instr.p_dest.value = instr.p_sources[0].value & ExeFuncts.sing_extend(
+                instr.decoded_fields.immediate, 12
+            )
+        elif len(instr.decoded_fields.sources) == 2:
+            instr.p_dest.value = instr.p_sources[0].value & instr.p_sources[1].value
+
+    @staticmethod
+    def exec_sub(instr):
+        instr.p_dest.value = instr.p_sources[0].value - instr.p_sources[1].value
+
+    @staticmethod
+    def exec_mul(instr):
+        instr.p_dest.value = instr.p_sources[0].value * instr.p_sources[1].value
+
+    @staticmethod
     def exec_lui(instr):
         instr.p_dest.value = instr.decoded_fields.immediate << 12
 
     @staticmethod
     def exec_sll(instr):
-        instr.p_dest.value = instr.p_sources[0].value << (
-            instr.p_sources[1].value & 0x1F
-        )
+        if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
+            try:
+                instr.p_dest.value = instr.p_sources[0].value << instr.decoded_fields.immediate & 0x1F
+            except TypeError:
+                print("InstrID: "+ str(instr.instr_id) + "Instr: " + instr.decoded_fields.instruction)
+                raise
+        else:
+            instr.p_dest.value = (
+                instr.p_sources[0].value << instr.p_sources[1].value & 0x1F
+            )
 
     @staticmethod
     def exec_slt(instr):
@@ -112,12 +136,20 @@ class ExeFuncts:
         instr.branch_result = instr.p_sources[0].value == instr.p_sources[1].value
 
     @staticmethod
+    def exec_gequ(instr):
+        instr.branch_result = instr.p_sources[0].value >= instr.p_sources[1].value
+
+    @staticmethod
     def exec_equz(instr):
         instr.branch_result = instr.p_sources[0].value == 0
 
     @staticmethod
     def exec_less(instr):
         instr.branch_result = instr.p_sources[0].value < instr.p_sources[1].value
+
+    @staticmethod
+    def exec_lequ(instr):
+        instr.branch_result = instr.p_sources[0].value <= instr.p_sources[1].value
 
     @staticmethod
     def exec_true(instr):
@@ -127,6 +159,15 @@ class ExeFuncts:
     def exec_nop(instr):
         pass
 
+    @staticmethod
+    def sing_extend(value, bits):
+        mask = (1 << bits) - 1
+        masked_value = value & mask
+        if masked_value & (1 << (bits - 1)):
+            return masked_value | (-1 << 12)
+        else:
+            return masked_value
+
 
 class InstructionTable:
     # Table of tuples
@@ -135,12 +176,16 @@ class InstructionTable:
         {
             # INT    label               destination n_sources immediate pipelined latency computation
             'add':   (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_add),
+            'sub':   (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sub),
+            'mul':   (InstrLabel.INT,    True,       2,        False,    True,     2,      ExeFuncts.exec_mul),
             'mv':    (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_add),
             'addi':  (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_add),
             'addiw': (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_add),
+            'andi':  (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_andbit),
             'li':    (InstrLabel.INT,    True,       0,        True,     True,     1,      ExeFuncts.exec_add),
             'lui':   (InstrLabel.INT,    True,       0,        True,     True,     1,      ExeFuncts.exec_lui),
             'sll':   (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sll),
+            'slli':  (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_sll),
             'slt':   (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_slt),
             'nop':   (InstrLabel.INT,    False,      0,        False,    True,     1,      ExeFuncts.exec_add),
             # MEM    label               destination n_sources immediate pipelined latency computation          n_bytes
@@ -149,7 +194,9 @@ class InstructionTable:
             # Branch label               destination n_sources immediate pipelined latency computation
             'bne':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_nequ),
             'beq':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_equ),
+            'bge':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_gequ),
             'bltu':  (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_less),
+            'ble':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_lequ),
             'beqz':  (InstrLabel.BRANCH, False,      1,        False,    True,     1,      ExeFuncts.exec_equz),
             'j':     (InstrLabel.BRANCH, False,      0,        False,    True,     1,      ExeFuncts.exec_true),
             'jr':    (InstrLabel.CALL,   False,      0,        False,    True,     1,      ExeFuncts.exec_nop),
