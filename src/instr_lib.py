@@ -56,7 +56,6 @@ class Instr(sim.Component):
             yield from self.ls_buffer()
         else:
             yield from self.dispatch_alloc()
-        yield from self.issue_logic()
         yield from self.read_registers()
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.ARITH:
             yield from self.execution()
@@ -107,6 +106,8 @@ class Instr(sim.Component):
         yield self.request(self.resources.int_queue)
         yield from self.dispatch_alloc()
         self.konata_signature.print_stage("ALL", "QUE", self.thread_id, self.instr_id)
+        yield from self.issue_logic()
+        yield from self.fu_request()
 
     def ls_buffer(self):
         yield self.request(self.resources.LoadStoreQueueInst.lsu_slots)
@@ -114,6 +115,9 @@ class Instr(sim.Component):
         self.konata_signature.print_stage("ALL", "LSB", self.thread_id, self.instr_id)
         # Request of cache port
         yield self.request(self.resources.cache_ports)
+        yield from self.issue_logic()
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE:
+            yield from self.stores_lock()
 
     def dispatch_alloc(self):
         self.konata_signature.print_stage("RNM", "DIS", self.thread_id, self.instr_id)
@@ -128,9 +132,6 @@ class Instr(sim.Component):
         for x in self.p_sources:
             yield self.wait(x.reg_state)
         self.konata_signature.print_stage("QUE", "WUP", self.thread_id, self.instr_id)
-        yield from self.fu_request()
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE:
-            yield from self.stores_lock()
 
     def fu_request(self):
         # FU request
@@ -283,6 +284,8 @@ class Instr(sim.Component):
             yield self.hold(1)
 
     def commit(self):
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.CALL:
+            dec.Calls.call_functions(self)
         # Advance Rob head to commit next instruction
         self.resources.RobInst.release_instr()
         yield self.request(self.resources.commit_ports)
