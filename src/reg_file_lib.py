@@ -8,6 +8,7 @@ class RegFile:
         )
         self.rat = [PhysicalRegister(state=True, value=i) for i in range(32)]
         self.rat_stack = []
+        self.dummy_reg = PhysicalRegister(state=False, value=0)
 
     def set_reg(self, arch_reg, physical_reg):
         self.rat[arch_reg] = physical_reg
