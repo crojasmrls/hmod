@@ -10,6 +10,10 @@ class RegFile:
         self.rat_stack = []
         self.dummy_reg = PhysicalRegister(state=False, value=0)
 
+    def init_regs(self, init_reg_values, register_table):
+        for reg, value in init_reg_values:
+            self.rat[register_table[reg]].value = value
+
     def set_reg(self, arch_reg, physical_reg):
         self.rat[arch_reg] = physical_reg
 

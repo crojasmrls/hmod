@@ -23,3 +23,7 @@ class MemoryMap:
     MAIN = 0x10108
     RODATA = 0x1C7C0
     DATA = 0x1E6E0
+
+
+class RegisterInit:
+    init_reg_values = [("ra", "END"), ("sp", 0x7FFFEFFC), ("gp", 0x10008000)]
