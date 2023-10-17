@@ -87,9 +87,11 @@ class Instr(sim.Component):
         ]
         # Request physical destination
         if self.decoded_fields.instr_tuple[dec.INTFields.DEST]:
-            yield self.request(self.resources.RegisterFileInst.FRL_resource)
             if self.decoded_fields.dest != 0:
-                self.p_dest = PhysicalRegister(state=False, value=self.decoded_fields.dest)
+                yield self.request(self.resources.RegisterFileInst.FRL_resource)
+                self.p_dest = PhysicalRegister(
+                    state=False, value=self.decoded_fields.dest
+                )
                 self.resources.RegisterFileInst.set_reg(
                     self.decoded_fields.dest, self.p_dest
                 )
