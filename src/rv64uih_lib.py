@@ -93,6 +93,13 @@ class ExeFuncts:
         instr.p_dest.value = instr.p_sources[0].value - instr.p_sources[1].value
 
     @staticmethod
+    def exec_sext(instr):
+        instr.p_dest.value = ExeFuncts.sing_extend(
+            instr.p_sources[0].value,
+            instr.decoded_fields.instr_tuple[INTFields.N_BYTES] * 8,
+        )
+
+    @staticmethod
     def exec_mul(instr):
         instr.p_dest.value = instr.p_sources[0].value * instr.p_sources[1].value
 
@@ -103,11 +110,7 @@ class ExeFuncts:
     @staticmethod
     def exec_sll(instr):
         if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
-            try:
-                instr.p_dest.value = instr.p_sources[0].value << instr.decoded_fields.immediate & 0x1F
-            except TypeError:
-                print("InstrID: "+ str(instr.instr_id) + "Instr: " + instr.decoded_fields.instruction)
-                raise
+            instr.p_sources[0].value << instr.decoded_fields.immediate & 0x1F
         else:
             instr.p_dest.value = (
                 instr.p_sources[0].value << instr.p_sources[1].value & 0x1F
@@ -174,36 +177,37 @@ class InstructionTable:
     # fmt: off
     Instructions = \
         {
-            # INT    label               destination n_sources immediate pipelined latency computation
-            'add':   (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_add),
-            'sub':   (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sub),
-            'mul':   (InstrLabel.INT,    True,       2,        False,    True,     2,      ExeFuncts.exec_mul),
-            'mv':    (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_add),
-            'addi':  (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_add),
-            'addiw': (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_add),
-            'andi':  (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_andbit),
-            'li':    (InstrLabel.INT,    True,       0,        True,     True,     1,      ExeFuncts.exec_add),
-            'lui':   (InstrLabel.INT,    True,       0,        True,     True,     1,      ExeFuncts.exec_lui),
-            'sll':   (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sll),
-            'slli':  (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_sll),
-            'slt':   (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_slt),
-            'nop':   (InstrLabel.INT,    False,      0,        False,    True,     1,      ExeFuncts.exec_add),
-            # MEM    label               destination n_sources immediate pipelined latency computation          n_bytes
-            'sd':    (InstrLabel.STORE,  False,      2,        True,     True,     1,      ExeFuncts.exec_addr, 8),
-            'ld':    (InstrLabel.LOAD,   True,       1,        True,     True,     1,      ExeFuncts.exec_addr, 8),
-            # Branch label               destination n_sources immediate pipelined latency computation
-            'bne':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_nequ),
-            'beq':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_equ),
-            'bge':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_gequ),
-            'bltu':  (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_less),
-            'ble':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_lequ),
-            'beqz':  (InstrLabel.BRANCH, False,      1,        False,    True,     1,      ExeFuncts.exec_equz),
-            'j':     (InstrLabel.BRANCH, False,      0,        False,    True,     1,      ExeFuncts.exec_true),
-            'jr':    (InstrLabel.CALL,   False,      0,        False,    True,     1,      ExeFuncts.exec_nop),
-            # HILAR  label               destination n_sources immediate pipelined latency computation
-            'new':   (InstrLabel.HILAR,  False,      0,        False,    True,     1,      ExeFuncts.exec_nop),
-            # CALLS  label               destination n_sources immediate pipelined latency computation
-            'call':  (InstrLabel.CALL,   False,      8,        False,    True,     1,      ExeFuncts.exec_nop),
+            # INT     label               destination n_sources immediate pipelined latency computation          n_bytes
+            'add':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_add),
+            'sub':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sub),
+            'mul':    (InstrLabel.INT,    True,       2,        False,    True,     2,      ExeFuncts.exec_mul),
+            'sll':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sll),
+            'mv':     (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_add),
+            'sext.w': (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_sext, 4),
+            'addi':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_add),
+            'addiw':  (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_add),
+            'andi':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_andbit),
+            'li':     (InstrLabel.INT,    True,       0,        True,     True,     1,      ExeFuncts.exec_add),
+            'lui':    (InstrLabel.INT,    True,       0,        True,     True,     1,      ExeFuncts.exec_lui),
+            'slli':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_sll),
+            'slt':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_slt),
+            'nop':    (InstrLabel.INT,    False,      0,        False,    True,     1,      ExeFuncts.exec_add),
+            # MEM     label               destination n_sources immediate pipelined latency computation          n_bytes
+            'sd':     (InstrLabel.STORE,  False,      2,        True,     True,     1,      ExeFuncts.exec_addr, 8),
+            'ld':     (InstrLabel.LOAD,   True,       1,        True,     True,     1,      ExeFuncts.exec_addr, 8),
+            # Branch  label               destination n_sources immediate pipelined latency computation
+            'bne':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_nequ),
+            'beq':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_equ),
+            'bge':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_gequ),
+            'bltu':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_less),
+            'ble':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_lequ),
+            'beqz':   (InstrLabel.BRANCH, False,      1,        False,    True,     1,      ExeFuncts.exec_equz),
+            'j':      (InstrLabel.BRANCH, False,      0,        False,    True,     1,      ExeFuncts.exec_true),
+            'jr':     (InstrLabel.CALL,   False,      0,        False,    True,     1,      ExeFuncts.exec_nop),
+            # HILAR   label               destination n_sources immediate pipelined latency computation
+            'new':    (InstrLabel.HILAR,  False,      0,        False,    True,     1,      ExeFuncts.exec_nop),
+            # CALLS   label               destination n_sources immediate pipelined latency computation
+            'call':   (InstrLabel.CALL,   False,      8,        False,    True,     1,      ExeFuncts.exec_nop),
         }
     # fmt: on
 
