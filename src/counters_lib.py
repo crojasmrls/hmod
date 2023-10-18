@@ -2,19 +2,17 @@ import salabim as sim
 
 
 class GlobalCycles(sim.Component):
-    def setup(self, event_counters, perf_counters_en):
-        self.perf_counters_en = perf_counters_en
-        self.cycles_en = True
+    def setup(self, event_counters, count_ctrl):
         self.event_counters = event_counters
+        self.count_ctrl = count_ctrl
 
     def process(self):
-        if self.perf_counters_en:
-            while True:
-                if self.cycles_en:
-                    self.event_counters.increase_counter("cycles")
-                    yield self.hold(1)
-                else:
-                    yield self.passivate()
+        while True:
+            if self.count_ctrl.is_enable():
+                self.event_counters.increase_counter("cycles")
+                yield self.hold(1)
+            else:
+                yield self.passivate()
 
 
 class EventCounters:
@@ -30,16 +28,35 @@ class EventCounters:
     def set_counter(self, name, value):
         self.counters[name] = value
 
+    def reset_counters(self):
+        for counter in self.counters:
+            self.set_counter(counter, 0)
+
     def read_counter(self, name):
         return self.counters[name]
 
 
+class CountersControl:
+    def __init__(self):
+        self.perf_counters_en = False
+
+    def is_enable(self):
+        return self.perf_counters_en
+
+    def enable(self):
+        self.perf_counters_en = True
+
+    def disable(self):
+        self.perf_counters_en = False
+
+
 class PerformanceCounters:
-    def __init__(self, perf_counters_en):
+    def __init__(self):
         self.MetricsList = ["IPC", "Instructions", "Cycles"]
         self.ECInst = EventCounters()
+        self.CountCtrl = CountersControl()
         self.GCInst = GlobalCycles(
-            event_counters=self.ECInst, perf_counters_en=perf_counters_en
+            event_counters=self.ECInst, count_ctrl=self.CountCtrl
         )
         self.create_counters()
 

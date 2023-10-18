@@ -27,7 +27,6 @@ params_1 = par1.PipelineParams
 mem_map_1 = par1.MemoryMap
 init_reg_values = par1.RegisterInit.init_reg_values
 register_table = dec.IntRegisterTable.registers
-perf_counters_en = params_1.perf_counters_en
 env = sim.Environment(trace=False)
 #
 KonataSignatureInst = kon.KonataSignature(
@@ -38,7 +37,7 @@ KonataSignatureInst = kon.KonataSignature(
     priority=-2,
 )
 #
-PerformanceCountersInst = pec.PerformanceCounters(perf_counters_en)
+PerformanceCountersInst = pec.PerformanceCounters()
 
 PEInst0 = pe.PE(
     params=params_1,
@@ -70,6 +69,5 @@ print(
     round(PEInst0.FetchUnitInst.instr_id / (end - start), 2),
 )
 print("Data cache dump:")
-PEInst0.DataCacheInst.print_data_cache()
-if perf_counters_en:
-    PerformanceCountersInst.print_metrics()
+# PEInst0.DataCacheInst.print_data_cache()
+PerformanceCountersInst.print_metrics()

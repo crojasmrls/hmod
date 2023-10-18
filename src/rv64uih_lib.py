@@ -112,10 +112,12 @@ class ExeFuncts:
     @staticmethod
     def exec_sll(instr):
         if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
-            instr.p_sources[0].value << instr.decoded_fields.immediate & 0x1F
+            instr.p_dest.value = instr.p_sources[0].value << (
+                instr.decoded_fields.immediate & 0x1F
+            )
         else:
-            instr.p_dest.value = (
-                instr.p_sources[0].value << instr.p_sources[1].value & 0x1F
+            instr.p_dest.value = instr.p_sources[0].value << (
+                instr.p_sources[1].value & 0x1F
             )
 
     @staticmethod
@@ -225,12 +227,14 @@ class DecodedFields:
         self.branch_target = None
         self.instr_tuple = None
         self.call_code = None
+        self.is_magic = False
         self.set_fields()
 
     def set_fields(self):
         parsed_instr = self.instruction.replace(",", " ").split()
+        tag = parsed_instr.pop(0)
         try:
-            self.instr_tuple = InstructionTable.Instructions[parsed_instr.pop(0)]
+            self.instr_tuple = InstructionTable.Instructions[tag]
         except KeyError:
             print("NameError: Not supported instruction")
             raise
@@ -253,6 +257,9 @@ class DecodedFields:
                 except ValueError:
                     print("NameError: Invalid immediate")
                     raise
+            if tag == "addi" and self.dest == 0:
+                self.is_magic = True
+
         # MEM parse data source or destination, addr base source and immediate
         if self.instr_tuple[INTFields.LABEL] in InstrLabel.LS:
             if self.instr_tuple[INTFields.DEST]:
@@ -329,6 +336,31 @@ class Calls:
     @staticmethod
     def replace_end_line(text):
         return text[::-1].replace("n\\", "", 1)[::-1].replace("\\n", "\n")
+
+
+class Magics:
+    # call functions
+    @staticmethod
+    def magic_functions(instr):
+        return {
+            1: lambda: Magics.perf_count_start(instr.performance_counters),
+            2: lambda: Magics.perf_count_stop(instr.performance_counters),
+            3: lambda: Magics.perf_count_reset(instr.performance_counters),
+        }.get(instr.decoded_fields.immediate, lambda: None)()
+
+    @staticmethod
+    def perf_count_start(performance_counters):
+        performance_counters.CountCtrl.enable()
+        if performance_counters.GCInst.ispassive():
+            performance_counters.GCInst.activate()
+
+    @staticmethod
+    def perf_count_stop(performance_counters):
+        performance_counters.CountCtrl.disable()
+
+    @staticmethod
+    def perf_count_reset(performance_counters):
+        performance_counters.ECInst.reset_counters()
 
 
 # # Not used

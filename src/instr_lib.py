@@ -288,6 +288,8 @@ class Instr(sim.Component):
     def commit(self):
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.CALL:
             dec.Calls.call_functions(self)
+        if self.decoded_fields.is_magic:
+            dec.Magics.magic_functions(self)
         # Advance Rob head to commit next instruction
         self.resources.RobInst.release_instr()
         yield self.request(self.resources.commit_ports)
@@ -297,7 +299,7 @@ class Instr(sim.Component):
 
     def tracer(self):
         # Counters increment
-        if self.params.perf_counters_en:
+        if self.performance_counters.CountCtrl.is_enable():
             self.performance_counters.ECInst.increase_counter("commits")
             self.performance_counters.ECInst.set_counter(
                 "commit_cycles", self.performance_counters.ECInst.read_counter("cycles")
