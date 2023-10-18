@@ -2,6 +2,7 @@ import time
 import salabim as sim
 import pe_lib as pe
 import pipeline_parameters_1 as par1
+import rv64uih_lib as dec
 import konata_lib as kon
 import counters_lib as pec
 
@@ -16,13 +17,16 @@ program1 = "risc-assembly/stores.asm"
 program2 = "risc-assembly/add.asm"
 program3 = "risc-assembly/bublesort.asm"
 program4 = "c_implementations/bubblesort.s"
+program5 = "c_implementations/spmv_main.s"
 konata_out = "konata_signature.txt"
 torture_out = "torture_signature.sig"
-cycles = 5000
+cycles = 4000
 konata_dump_on = True
 torture_dump_on = True
 params_1 = par1.PipelineParams
 mem_map_1 = par1.MemoryMap
+init_reg_values = par1.RegisterInit.init_reg_values
+register_table = dec.IntRegisterTable.registers
 perf_counters_en = params_1.perf_counters_en
 env = sim.Environment(trace=False)
 #
@@ -48,8 +52,9 @@ PEInst0 = pe.PE(
 #                 konata_signature=KonataSignatureInst)
 
 PEInst0.ASMParserInst.read_program("../risc-v-examples/" + program4, mem_map_1)
-PEInst0.InstrCacheInst.print_program()
-# PEInst1.InstrCacheInst.read_program()
+PEInst0.ResInst.RegisterFileInst.init_regs(init_reg_values, register_table)
+# PEInst0.InstrCacheInst.print_program()
+
 
 # record start time
 start = time.time()

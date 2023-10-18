@@ -47,8 +47,10 @@ class InstrLabel(Flag):
     LOAD = auto()
     STORE = auto()
     BRANCH = auto()
+    JALR = auto()
+    CTRL = BRANCH | JALR
     LS = LOAD | STORE
-    ARITH_INT = INT | BRANCH
+    ARITH_INT = INT | CTRL
     ARITH = ARITH_INT | FP
 
 
@@ -203,7 +205,7 @@ class InstructionTable:
             'ble':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_lequ),
             'beqz':   (InstrLabel.BRANCH, False,      1,        False,    True,     1,      ExeFuncts.exec_equz),
             'j':      (InstrLabel.BRANCH, False,      0,        False,    True,     1,      ExeFuncts.exec_true),
-            'jr':     (InstrLabel.CALL,   False,      0,        False,    True,     1,      ExeFuncts.exec_nop),
+            'jr':     (InstrLabel.JALR,   False,      1,        False,    True,     1,      ExeFuncts.exec_true),
             # HILAR   label               destination n_sources immediate pipelined latency computation
             'new':    (InstrLabel.HILAR,  False,      0,        False,    True,     1,      ExeFuncts.exec_nop),
             # CALLS   label               destination n_sources immediate pipelined latency computation
@@ -286,6 +288,14 @@ class DecodedFields:
                     print("NameError: Invalid source register")
                     raise
             self.branch_target = parsed_instr.pop(0)
+        # JALR fields
+        if self.instr_tuple[INTFields.LABEL] is InstrLabel.JALR:
+            for x in range(self.instr_tuple[INTFields.N_SOURCES]):
+                try:
+                    self.sources.append(IntRegisterTable.registers[parsed_instr.pop(0)])
+                except KeyError:
+                    print("NameError: Invalid source register")
+                    raise
         # System calls
         if self.instr_tuple[INTFields.LABEL] is InstrLabel.CALL:
             self.call_code = parsed_instr.pop(0)
