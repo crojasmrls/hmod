@@ -98,10 +98,7 @@ class Instr(sim.Component):
             else:
                 self.p_dest = self.resources.RegisterFileInst.dummy_reg
         # Create RAT chekpoit
-        if (
-            self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
-            is dec.InstrLabel.BRANCH
-        ):
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
             self.resources.RegisterFileInst.push_rat(self)
         self.release((self.resources.rename_resource, 1))
         yield self.hold(1)  # Hold for renaming stage
@@ -142,10 +139,7 @@ class Instr(sim.Component):
         # FU request
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.INT:
             yield self.request(self.resources.int_units)
-        if (
-            self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
-            is dec.InstrLabel.BRANCH
-        ):
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
             yield self.request(self.resources.branch_units)
             if self.params.branch_in_int_alu:
                 yield self.request(self.resources.int_units)
@@ -163,7 +157,7 @@ class Instr(sim.Component):
                 self.release((self.resources.int_units, 1))
             if (
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
-                is dec.InstrLabel.BRANCH
+                in dec.InstrLabel.CTRL
             ):
                 self.release((self.resources.branch_units, 1))
                 if self.params.branch_in_int_alu:
@@ -196,19 +190,13 @@ class Instr(sim.Component):
 
     def execution(self):
         self.konata_signature.print_stage("RRE", "EXE", self.thread_id, self.instr_id)
-        if (
-            self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
-            is dec.InstrLabel.BRANCH
-        ):
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
             self.branch_evaluation()
         # Execution stage
         for x in range(self.decoded_fields.instr_tuple[dec.INTFields.LATENCY]):
             self.fu_last_cycle(x)
             yield self.hold(1)  # Hold for exe stage
-        if (
-            self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
-            is dec.InstrLabel.BRANCH
-        ):
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
             self.branch_predictor_write()
         self.release((self.resources.int_queue, 1))
 
@@ -229,7 +217,16 @@ class Instr(sim.Component):
             self.resources.miss_branch = [True]
             self.fetch_unit.flushed = True
             if self.branch_result:
-                self.resources.branch_target = [(self.decoded_fields.branch_target, 0)]
+                if (
+                    self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                    is dec.InstrLabel.JALR
+                ):
+                    self.resources.branch_target = [(self.p_sources[0].value, 0)]
+                    self.decoded_fields.branch_target = self.p_sources[0].value
+                else:
+                    self.resources.branch_target = [
+                        (self.decoded_fields.branch_target, 0)
+                    ]
             else:
                 self.resources.branch_target = [(self.bb_name, self.offset + 1)]
             self.recovery()
@@ -333,7 +330,7 @@ class Instr(sim.Component):
         if (
             not self.params.exe_brob_release
             and self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
-            is dec.InstrLabel.BRANCH
+            in dec.InstrLabel.CTRL
         ):
             self.resources.RegisterFileInst.release_shadow_rat(self)
         if self.resources.finished and (self.resources.RobInst.rob_list == []):
