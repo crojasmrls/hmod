@@ -86,8 +86,14 @@ class FetchUnit(sim.Component):
                 self.flushed = False
                 if self.resources.miss_branch.pop(0):
                     branch_target = self.resources.branch_target.pop(0)
-                    self.bb_name = branch_target[0]
-                    self.offset = branch_target[1]
+                    if branch_target[1] == self.instr_cache.get_block_len(
+                        branch_target[0]
+                    ):
+                        self.bb_name = self.instr_cache.get_next_block(branch_target[0])
+                        self.offset = 0
+                    else:
+                        self.bb_name = branch_target[0]
+                        self.offset = branch_target[1]
                 else:
                     self.resources.branch_target.pop(0)
             # If fetch process reach end of file passivate it
