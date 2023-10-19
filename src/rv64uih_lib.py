@@ -343,24 +343,33 @@ class Magics:
     @staticmethod
     def magic_functions(instr):
         return {
-            1: lambda: Magics.perf_count_start(instr.performance_counters),
-            2: lambda: Magics.perf_count_stop(instr.performance_counters),
-            3: lambda: Magics.perf_count_reset(instr.performance_counters),
+            1: lambda: Magics.perf_count_start(
+                instr.performance_counters, instr.instr_id
+            ),
+            2: lambda: Magics.perf_count_stop(
+                instr.performance_counters, instr.instr_id
+            ),
+            3: lambda: Magics.perf_count_reset(
+                instr.performance_counters, instr.instr_id
+            ),
         }.get(instr.decoded_fields.immediate, lambda: None)()
 
     @staticmethod
-    def perf_count_start(performance_counters):
+    def perf_count_start(performance_counters, instr_id):
         performance_counters.CountCtrl.enable()
         if performance_counters.GCInst.ispassive():
             performance_counters.GCInst.activate()
+        print("Performance counters have started with instruction id: " + str(instr_id))
 
     @staticmethod
-    def perf_count_stop(performance_counters):
+    def perf_count_stop(performance_counters, instr_id):
         performance_counters.CountCtrl.disable()
+        print("Performance counters have stopped with instruction id: " + str(instr_id))
 
     @staticmethod
-    def perf_count_reset(performance_counters):
+    def perf_count_reset(performance_counters, instr_id):
         performance_counters.ECInst.reset_counters()
+        print("Performance counters have reset with instruction id: " + str(instr_id))
 
 
 # # Not used

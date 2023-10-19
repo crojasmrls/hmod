@@ -335,6 +335,6 @@ class Instr(sim.Component):
             in dec.InstrLabel.CTRL
         ):
             self.resources.RegisterFileInst.release_shadow_rat(self)
-        if self.resources.finished and (self.resources.RobInst.rob_list == []):
-            print("Program end")
+        # if self.resources.finished and (self.resources.RobInst.rob_list == []):
+        #    print("Program end")
         self.konata_signature.retire_instr(self.thread_id, self.instr_id, False)
