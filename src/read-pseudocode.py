@@ -20,7 +20,7 @@ program4 = "c_implementations/bubblesort.s"
 program5 = "c_implementations/spmv_main.s"
 konata_out = "konata_signature.txt"
 torture_out = "torture_signature.sig"
-cycles = 4000
+cycles = 1000000
 konata_dump_on = True
 torture_dump_on = True
 params_1 = par1.PipelineParams
@@ -50,10 +50,9 @@ PEInst0 = pe.PE(
 #                 program=program2, thread_id=1,
 #                 konata_signature=KonataSignatureInst)
 
-PEInst0.ASMParserInst.read_program("../risc-v-examples/" + program4, mem_map_1)
+PEInst0.ASMParserInst.read_program("../risc-v-examples/" + program5, mem_map_1)
 PEInst0.ResInst.RegisterFileInst.init_regs(init_reg_values, register_table)
 # PEInst0.InstrCacheInst.print_program()
-
 
 # record start time
 start = time.time()
@@ -68,6 +67,6 @@ print(
     "Simulated instructions per second:",
     round(PEInst0.FetchUnitInst.instr_id / (end - start), 2),
 )
-print("Data cache dump:")
+# print("Data cache dump:")
 # PEInst0.DataCacheInst.print_data_cache()
 PerformanceCountersInst.print_metrics()
