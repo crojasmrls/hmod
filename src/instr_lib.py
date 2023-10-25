@@ -73,9 +73,11 @@ class Instr(sim.Component):
         self.konata_signature.print_stage("FET", "DEC", self.thread_id, self.instr_id)
         yield self.hold(1)  # Hold for decode stage
         # Front end Resourses
+        yield self.request(self.resources.rename_resource)
         yield self.request(self.resources.rename_ports)
         yield self.request(self.resources.RobInst.rob_resource)
-        yield self.request(self.resources.rename_resource)
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
+            yield self.request(self.resources.brob_resource)
         yield from self.renaming()
 
     def renaming(self):
@@ -250,6 +252,7 @@ class Instr(sim.Component):
         )
         if self.params.exe_brob_release:
             self.resources.RegisterFileInst.release_shadow_rat(self)
+            self.release((self.resources.brob_resource, 1))
 
     def data_cache_stages(self):
         self.konata_signature.print_stage("RRE", "MEM", self.thread_id, self.instr_id)
@@ -335,6 +338,7 @@ class Instr(sim.Component):
             in dec.InstrLabel.CTRL
         ):
             self.resources.RegisterFileInst.release_shadow_rat(self)
+            self.release((self.resources.brob_resource, 1))
         # if self.resources.finished and (self.resources.RobInst.rob_list == []):
         #    print("Program end")
         self.konata_signature.retire_instr(self.thread_id, self.instr_id, False)
