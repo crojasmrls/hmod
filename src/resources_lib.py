@@ -31,6 +31,9 @@ class Resources:
         self.rename_ports = sim.Resource(
             "rename_ports", capacity=self.params.fetch_width
         )
+        self.dispatch_ports = sim.Resource(
+            "dispatch_ports", capacity=self.params.fetch_width
+        )
         self.int_alloc_ports = sim.Resource(
             "int_alloc_ports", capacity=self.params.fetch_width
         )

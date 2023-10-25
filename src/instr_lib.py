@@ -82,7 +82,6 @@ class Instr(sim.Component):
 
     def renaming(self):
         self.konata_signature.print_stage("DEC", "RNM", self.thread_id, self.instr_id)
-        self.release((self.resources.decode_ports, 1))
         self.p_sources = [
             self.resources.RegisterFileInst.get_reg(src)
             for src in self.decoded_fields.sources
@@ -103,8 +102,8 @@ class Instr(sim.Component):
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
             self.resources.RegisterFileInst.push_rat(self)
         self.release((self.resources.rename_resource, 1))
+        self.release((self.resources.decode_ports, 1))
         yield self.hold(1)  # Hold for renaming stage
-        self.release((self.resources.rename_ports, 1))
 
     def arith_queue(self):
         yield self.request(self.resources.int_queue)
@@ -125,9 +124,12 @@ class Instr(sim.Component):
 
     def dispatch_alloc(self):
         self.konata_signature.print_stage("RNM", "DIS", self.thread_id, self.instr_id)
+        yield self.request(self.resources.dispatch_ports)
+        self.release((self.resources.rename_ports, 1))
         yield self.hold(1)  # Hold for dispatch stage
         yield self.request(self.resources.int_alloc_ports)
         self.konata_signature.print_stage("DIS", "ALL", self.thread_id, self.instr_id)
+        self.release((self.resources.dispatch_ports, 1))
         yield self.hold(1)  # Hold for allocation stage
         self.release((self.resources.int_alloc_ports, 1))
 
