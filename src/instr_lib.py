@@ -267,8 +267,14 @@ class Instr(sim.Component):
                 and x + 2 == self.params.l1_dcache_latency
             ):
                 self.store_to_load_fwd()
-                self.p_dest.reg_state.set(True)
+                if self.params.speculate_on_load:
+                    self.p_dest.reg_state.set(True)
             yield self.hold(1)  # Hold for mem stage
+        if (
+            self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD
+            and not self.params.speculate_on_load
+        ):
+            self.p_dest.reg_state.set(True)
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE:
             self.data_cache.dc_store(self.address, self.p_sources[0].value)
 
