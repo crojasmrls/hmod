@@ -4,6 +4,7 @@ import random
 class DataCache:
     def __init__(self):
         self.mem = {}
+        self.mshrs = []
 
     def dc_load(self, addr):
         return self.mem.get(addr, random.randint(1 << 9, 1 << 99))

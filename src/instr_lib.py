@@ -1,3 +1,4 @@
+import random
 import salabim as sim
 import rv64uih_lib as dec
 from reg_file_lib import PhysicalRegister
@@ -42,6 +43,7 @@ class Instr(sim.Component):
         self.data = None
         # Speculative Issue
         self.back2back = False
+        self.data_cache_hit = True
         # Event Trace
         self.thread_id = thread_id
         self.instr_id = instr_id
@@ -60,7 +62,7 @@ class Instr(sim.Component):
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.ARITH:
             yield from self.execution()
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.LS:
-            yield from self.data_cache_stages()
+            yield from self.data_cache_pipeline()
         yield from self.wait_commit()
         yield from self.commit()
         self.tracer()
@@ -256,10 +258,22 @@ class Instr(sim.Component):
             self.resources.RegisterFileInst.release_shadow_rat(self)
             self.release((self.resources.brob_resource, 1))
 
-    def data_cache_stages(self):
+    def data_cache_pipeline(self):
         self.konata_signature.print_stage("RRE", "MEM", self.thread_id, self.instr_id)
+        yield self.request(self.resources.mshrs)
         self.release((self.resources.cache_ports, 1))
-        for x in range(self.params.l1_dcache_latency):
+        self.data_cache_hit = random.randint(1, 3) < 3
+        for mshr in self.data_cache.mshrs:
+            if mshr == self.address:
+                self.data_cache_hit = False
+        # hit = True
+        if self.data_cache_hit:
+            latency = self.params.l1_dcache_latency
+            self.release((self.resources.mshrs, 1))
+        else:
+            latency = self.params.l1_dcache_mis_latency
+            self.data_cache.mshrs.append(self.address)
+        for x in range(latency):
             # Execute load a wake-up dependencies 2 cycles before finishing load.
             if (
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
@@ -270,6 +284,10 @@ class Instr(sim.Component):
                 if self.params.speculate_on_load:
                     self.p_dest.reg_state.set(True)
             yield self.hold(1)  # Hold for mem stage
+        if not self.data_cache_hit:
+            self.data_cache_hit = True
+            self.release((self.resources.mshrs, 1))
+            self.data_cache.mshrs.pop(0)
         if (
             self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD
             and not self.params.speculate_on_load
@@ -297,6 +315,8 @@ class Instr(sim.Component):
             yield self.hold(1)
 
     def commit(self):
+        # check if a store is the following instruction in the ROB after a flush
+        self.resources.RobInst.store_next2commit(self)
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.CALL:
             dec.Calls.call_functions(self)
         if self.decoded_fields.is_magic:

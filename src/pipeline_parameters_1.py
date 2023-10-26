@@ -10,7 +10,9 @@ class PipelineParams:
     lsu_slots = 32
     brob_entries = 16
     l1_dcache_latency = 2
-    speculate_on_load = True
+    l1_dcache_mis_latency = 20
+    l1_dcache_mshrs = 2
+    speculate_on_load = False
     branch_in_int_alu = True
     exe_brob_release = True
     bp_enable = True
