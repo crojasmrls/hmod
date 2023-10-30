@@ -43,7 +43,7 @@ class Instr(sim.Component):
         self.data = None
         # Speculative Issue
         self.back2back = False
-        self.data_cache_hit = True
+        self.data_hit = True
         # Event Trace
         self.thread_id = thread_id
         self.instr_id = instr_id
@@ -58,11 +58,7 @@ class Instr(sim.Component):
             yield from self.ls_buffer()
         else:
             yield from self.dispatch_alloc()
-        yield from self.read_registers()
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.ARITH:
-            yield from self.execution()
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.LS:
-            yield from self.data_cache_pipeline()
+            yield from self.read_registers()
         yield from self.wait_commit()
         yield from self.commit()
         self.tracer()
@@ -113,6 +109,8 @@ class Instr(sim.Component):
         self.konata_signature.print_stage("ALL", "QUE", self.thread_id, self.instr_id)
         yield from self.issue_logic()
         yield from self.fu_request()
+        yield from self.read_registers()
+        yield from self.execution()
 
     def ls_buffer(self):
         yield self.request(self.resources.LoadStoreQueueInst.lsu_slots)
@@ -123,6 +121,8 @@ class Instr(sim.Component):
         yield from self.issue_logic()
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE:
             yield from self.stores_lock()
+        yield from self.read_registers()
+        yield from self.data_cache_pipeline()
 
     def dispatch_alloc(self):
         self.konata_signature.print_stage("RNM", "DIS", self.thread_id, self.instr_id)
@@ -207,7 +207,10 @@ class Instr(sim.Component):
         self.release((self.resources.int_queue, 1))
 
     def fu_last_cycle(self, cycles):
-        if self.decoded_fields.instr_tuple[dec.INTFields.LATENCY] - cycles - 2 == 0:
+        if (
+            cycles + self.params.issue_to_exe_latency
+            == self.decoded_fields.instr_tuple[dec.INTFields.LATENCY]
+        ):
             if self.decoded_fields.instr_tuple[dec.INTFields.DEST]:
                 self.p_dest.reg_state.set(True)  # Set ready bit to issue
             if not self.decoded_fields.instr_tuple[dec.INTFields.PIPELINED]:
@@ -259,34 +262,47 @@ class Instr(sim.Component):
             self.release((self.resources.brob_resource, 1))
 
     def data_cache_pipeline(self):
-        self.konata_signature.print_stage("RRE", "MEM", self.thread_id, self.instr_id)
+        self.konata_signature.print_stage("RRE", "LSU", self.thread_id, self.instr_id)
         yield self.request(self.resources.mshrs)
+        self.konata_signature.print_stage("RRE", "MEM", self.thread_id, self.instr_id)
         self.release((self.resources.cache_ports, 1))
-        self.data_cache_hit = random.randint(1, 3) < 3
+        self.data_hit = random.randint(1, 3) < 3
         for mshr in self.data_cache.mshrs:
             if mshr == self.address:
-                self.data_cache_hit = False
+                self.data_hit = False
         # hit = True
-        if self.data_cache_hit:
+        if self.data_hit:
             latency = self.params.l1_dcache_latency
-            self.release((self.resources.mshrs, 1))
         else:
             latency = self.params.l1_dcache_mis_latency
             self.data_cache.mshrs.append(self.address)
         for x in range(latency):
             # Execute load a wake-up dependencies 2 cycles before finishing load.
+            if x + self.params.issue_to_exe_latency == self.params.l1_dcache_latency:
+                if (
+                    self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                    is dec.InstrLabel.LOAD
+                ):
+                    self.store_to_load_fwd()
+                    if self.params.speculate_on_load:
+                        self.p_dest.reg_state.set(True)
+            elif x == self.params.l1_dcache_latency - 1:
+                if (
+                    self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                    is dec.InstrLabel.LOAD
+                ):
+                    self.p_dest.reg_state.set(self.data_hit)
+                if self.data_hit:
+                    self.release((self.resources.mshrs, 1))
+            yield self.hold(1)  # Hold for mem stage
+        if not self.data_hit:
             if (
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                 is dec.InstrLabel.LOAD
-                and x + 2 == self.params.l1_dcache_latency
             ):
-                self.store_to_load_fwd()
-                if self.params.speculate_on_load:
-                    self.p_dest.reg_state.set(True)
-            yield self.hold(1)  # Hold for mem stage
-        if not self.data_cache_hit:
-            self.data_cache_hit = True
-            self.release((self.resources.mshrs, 1))
+                self.p_dest.reg_state.set(True)
+                self.release((self.resources.mshrs, 1))
+            self.data_hit = True
             self.data_cache.mshrs.pop(0)
         if (
             self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD

@@ -15,6 +15,7 @@ class PipelineParams:
     speculate_on_load = False
     branch_in_int_alu = True
     exe_brob_release = True
+    issue_to_exe_latency = 2
     bp_enable = True
     branch_predictor = "bimodal_predictor"
     bp_entries = 128

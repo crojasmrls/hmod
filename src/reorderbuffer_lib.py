@@ -53,7 +53,11 @@ class ReorderBuffer:
     @staticmethod
     def release_resources(instr):
         instr.konata_signature.retire_instr(instr.thread_id, instr.instr_id, True)
-        if not instr.data_cache_hit:
+        if (
+            not instr.data_hit
+            and instr.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+            in dec.InstrLabel.LS
+        ):
             instr.data_cache.mshrs.pop(0)
         for resource in instr.claimed_resources():
             instr.release((resource, 1))
