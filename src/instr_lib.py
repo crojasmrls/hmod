@@ -43,7 +43,8 @@ class Instr(sim.Component):
         self.data = None
         # Speculative Issue
         self.back2back = False
-        self.data_hit = True
+        self.psrcs_hit = False
+        self.cache_hit = True
         # Event Trace
         self.thread_id = thread_id
         self.instr_id = instr_id
@@ -107,9 +108,19 @@ class Instr(sim.Component):
         yield self.request(self.resources.int_queue)
         yield from self.dispatch_alloc()
         self.konata_signature.print_stage("ALL", "QUE", self.thread_id, self.instr_id)
-        yield from self.issue_logic()
-        yield from self.fu_request()
-        yield from self.read_registers()
+        while not self.psrcs_hit:
+            yield from self.issue_logic()
+            yield from self.fu_request()
+            yield from self.read_registers()
+            # Chek ready of o p_sources to confirm speculation
+            self.check_psrcs_hit()
+            if not self.psrcs_hit:
+                self.konata_signature.print_stage(
+                    "RRE", "QUE", self.thread_id, self.instr_id
+                )
+                # Release bloocking FU
+                if not self.decoded_fields.instr_tuple[dec.INTFields.PIPELINED]:
+                    self.release((self.resources.int_units, 1))
         yield from self.execution()
 
     def ls_buffer(self):
@@ -118,11 +129,26 @@ class Instr(sim.Component):
         self.konata_signature.print_stage("ALL", "LSB", self.thread_id, self.instr_id)
         # Request of cache port
         yield self.request(self.resources.cache_ports)
-        yield from self.issue_logic()
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE:
-            yield from self.stores_lock()
-        yield from self.read_registers()
+        while not self.psrcs_hit:
+            yield from self.issue_logic()
+            if (
+                self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                is dec.InstrLabel.STORE
+            ):
+                yield from self.stores_lock()
+            yield from self.read_registers()
+            self.check_psrcs_hit()
+            if not self.psrcs_hit:
+                self.konata_signature.print_stage(
+                    "RRE", "LSB", self.thread_id, self.instr_id
+                )
         yield from self.data_cache_pipeline()
+
+    def check_psrcs_hit(self):
+        self.psrcs_hit = True
+        for x in self.p_sources:
+            if not x.reg_state.value.value:
+                self.psrcs_hit = False
 
     def dispatch_alloc(self):
         self.konata_signature.print_stage("RNM", "DIS", self.thread_id, self.instr_id)
@@ -266,12 +292,12 @@ class Instr(sim.Component):
         yield self.request(self.resources.mshrs)
         self.konata_signature.print_stage("RRE", "MEM", self.thread_id, self.instr_id)
         self.release((self.resources.cache_ports, 1))
-        self.data_hit = random.randint(1, 3) < 3
+        self.cache_hit = random.randint(1, 3) < 3
         for mshr in self.data_cache.mshrs:
             if mshr == self.address:
-                self.data_hit = False
+                self.cache_hit = False
         # hit = True
-        if self.data_hit:
+        if self.cache_hit:
             latency = self.params.l1_dcache_latency
         else:
             latency = self.params.l1_dcache_mis_latency
@@ -291,18 +317,18 @@ class Instr(sim.Component):
                     self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                     is dec.InstrLabel.LOAD
                 ):
-                    self.p_dest.reg_state.set(self.data_hit)
-                if self.data_hit:
+                    self.p_dest.reg_state.set(self.cache_hit)
+                if self.cache_hit:
                     self.release((self.resources.mshrs, 1))
             yield self.hold(1)  # Hold for mem stage
-        if not self.data_hit:
+        if not self.cache_hit:
             if (
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                 is dec.InstrLabel.LOAD
             ):
                 self.p_dest.reg_state.set(True)
                 self.release((self.resources.mshrs, 1))
-            self.data_hit = True
+            self.cache_hit = True
             self.data_cache.mshrs.pop(0)
         if (
             self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD

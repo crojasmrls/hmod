@@ -54,7 +54,7 @@ class ReorderBuffer:
     def release_resources(instr):
         instr.konata_signature.retire_instr(instr.thread_id, instr.instr_id, True)
         if (
-            not instr.data_hit
+            not instr.cache_hit
             and instr.decoded_fields.instr_tuple[dec.INTFields.LABEL]
             in dec.InstrLabel.LS
         ):
