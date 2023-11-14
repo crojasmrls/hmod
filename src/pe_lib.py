@@ -17,7 +17,7 @@ class PE:
         # Resources
         self.ResInst = res.Resources(params=self.params)
         # Data cache
-        self.DataCacheInst = dc.DataCache()
+        self.DataCacheInst = dc.DataCache(params=self.params)
         # Instr cache
         self.InstrCacheInst = ic.InstrCache()
         # Program parser and memory initialization

@@ -38,7 +38,7 @@ class Resources:
             "int_alloc_ports", capacity=self.params.fetch_width
         )
         self.cache_ports = sim.Resource("cache_ports", capacity=1)
-        self.mshrs = sim.Resource("mshrs", capacity=self.params.l1_dcache_mshrs)
+        self.mshrs = sim.Resource("mshrs", capacity=self.params.dcache_mshrs)
         self.store_state = sim.State("store_state", value=True)
         self.commit_ports = sim.Resource(
             "commit_ports", capacity=self.params.commit_width
