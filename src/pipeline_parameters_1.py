@@ -1,3 +1,6 @@
+import math
+
+
 class PipelineParams:
     fetch_width = 2
     commit_width = 2
@@ -24,6 +27,8 @@ class PipelineParams:
     l3_dcache_miss_latency = 30
     # Dcache dimensions
     dcache_line_bytes = 16
+    # Constant to shift the address to point a single cache line
+    mshr_shamt = int(math.log(dcache_line_bytes, 2))
     # L1 8KB
     l1_ways = 8
     l1_sets = 64

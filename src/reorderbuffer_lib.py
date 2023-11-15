@@ -58,7 +58,10 @@ class ReorderBuffer:
             and instr.decoded_fields.instr_tuple[dec.INTFields.LABEL]
             in dec.InstrLabel.LS
         ):
-            instr.data_cache.mshrs.pop(0)
+            try:
+                instr.data_cache.mshrs.pop(instr.address >> instr.params.mshr_shamt)
+            except KeyError:
+                pass
         for resource in instr.claimed_resources():
             instr.release((resource, 1))
         instr.fetch_unit.release_fetch()

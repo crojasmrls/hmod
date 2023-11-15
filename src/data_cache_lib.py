@@ -6,7 +6,7 @@ class DataCache:
     def __init__(self, params):
         self.params = params
         self.mem = {}
-        self.mshrs = []
+        self.mshrs = {}
         # pycachesim Model
         self.main_mem = MainMemory()
         self.l3 = Cache(

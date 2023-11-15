@@ -44,6 +44,7 @@ class Instr(sim.Component):
         self.back2back = False
         self.psrcs_hit = False
         self.cache_hit = True
+        self.mshr_owner = False
         # Event Trace
         self.thread_id = thread_id
         self.instr_id = instr_id
@@ -300,13 +301,13 @@ class Instr(sim.Component):
                 self.address, self.decoded_fields.instr_tuple[dec.INTFields.N_BYTES]
             )
         self.cache_hit = latency == self.params.cache_hit_latency
-        for mshr in self.data_cache.mshrs:
-            if mshr[0] == self.address:
-                self.cache_hit = False
-                latency = mshr[1]
+        mshr_latency = self.data_cache.mshrs.get(self.address >> self.params.mshr_shamt)
+        if mshr_latency:
+            self.cache_hit = False
+            latency = mshr_latency
         # hit = True
         if not self.cache_hit:
-            self.data_cache.mshrs.append((self.address, latency))
+            self.data_cache.mshrs[self.address >> self.params.mshr_shamt] = latency
         for x in range(latency):
             # Execute load a wake-up dependencies 2 cycles before finishing load.
             if x + self.params.issue_to_exe_latency == self.params.cache_hit_latency:
@@ -334,7 +335,10 @@ class Instr(sim.Component):
                 self.p_dest.reg_state.set(True)
                 self.release((self.resources.mshrs, 1))
             self.cache_hit = True
-            self.data_cache.mshrs.pop(0)
+            try:
+                self.data_cache.mshrs.pop(self.address >> self.params.mshr_shamt)
+            except KeyError:
+                pass
         if (
             self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD
             and not self.params.speculate_on_load
