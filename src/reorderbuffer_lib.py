@@ -53,13 +53,10 @@ class ReorderBuffer:
     @staticmethod
     def release_resources(instr):
         instr.konata_signature.retire_instr(instr.thread_id, instr.instr_id, True)
-        if (
-            not instr.cache_hit
-            and instr.decoded_fields.instr_tuple[dec.INTFields.LABEL]
-            in dec.InstrLabel.LS
-        ):
+        if instr.mshr_owner:
+            instr.mshr_owner = False
             try:
-                instr.data_cache.mshrs.pop(instr.address >> instr.params.mshr_shamt)
+                instr.data_cache.mshrs.pop(instr.address_align)
             except KeyError:
                 pass
         for resource in instr.claimed_resources():
