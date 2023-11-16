@@ -1,3 +1,6 @@
+import math
+
+
 class PipelineParams:
     fetch_width = 2
     commit_width = 2
@@ -9,16 +12,34 @@ class PipelineParams:
     int_queue_alloc_ports = 2
     lsu_slots = 32
     brob_entries = 16
-    l1_dcache_latency = 2
-    l1_dcache_mis_latency = 20
-    l1_dcache_mshrs = 2
-    speculate_on_load = True
     branch_in_int_alu = True
     exe_brob_release = True
     issue_to_exe_latency = 2
     bp_enable = True
     branch_predictor = "bimodal_predictor"
     bp_entries = 128
+    # Data cache parameters
+    dcache_mshrs = 4
+    # Dcache latencies
+    cache_hit_latency = 3
+    l1_dcache_miss_latency = 12
+    l2_dcache_miss_latency = 30
+    l3_dcache_miss_latency = 144
+    # Dcache dimensions
+    dcache_line_bytes = 16
+    # Constant to shift the address to point a single cache line
+    mshr_shamt = int(math.log(dcache_line_bytes, 2))
+    # L1 8KB
+    l1_ways = 8
+    l1_sets = 64
+    # L2 64KB
+    l2_ways = 8
+    l2_sets = 512
+    # L3 5MB
+    l3_ways = 16
+    l3_sets = 20480
+
+    speculate_on_load = True
 
 
 class MemoryMap:

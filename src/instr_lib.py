@@ -1,4 +1,3 @@
-import random
 import salabim as sim
 import rv64uih_lib as dec
 from reg_file_lib import PhysicalRegister
@@ -40,11 +39,13 @@ class Instr(sim.Component):
         self.bp_hit = None
         # L/S
         self.address = None
+        self.address_align = None
         self.data = None
         # Speculative Issue
         self.back2back = False
         self.psrcs_hit = False
         self.cache_hit = True
+        self.mshr_owner = False
         # Event Trace
         self.thread_id = thread_id
         self.instr_id = instr_id
@@ -292,19 +293,30 @@ class Instr(sim.Component):
         yield self.request(self.resources.mshrs)
         self.konata_signature.print_stage("RRE", "MEM", self.thread_id, self.instr_id)
         self.release((self.resources.cache_ports, 1))
-        self.cache_hit = random.randint(1, 3) < 3
-        for mshr in self.data_cache.mshrs:
-            if mshr == self.address:
-                self.cache_hit = False
-        # hit = True
-        if self.cache_hit:
-            latency = self.params.l1_dcache_latency
+        self.address_align = (
+            self.address >> self.params.mshr_shamt
+        ) << self.params.mshr_shamt
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD:
+            latency = self.data_cache.load_latency(
+                self.address_align,
+                self.decoded_fields.instr_tuple[dec.INTFields.N_BYTES],
+            )
         else:
-            latency = self.params.l1_dcache_mis_latency
-            self.data_cache.mshrs.append(self.address)
+            latency = self.data_cache.store_latency(
+                self.address_align,
+                self.decoded_fields.instr_tuple[dec.INTFields.N_BYTES],
+            )
+        self.cache_hit = latency == self.params.cache_hit_latency
+        if not self.cache_hit:
+            self.data_cache.mshrs[self.address_align] = latency
+            self.mshr_owner = True
+        mshr_latency = self.data_cache.mshrs.get(self.address_align)
+        if mshr_latency:
+            self.cache_hit = False
+            latency = mshr_latency
         for x in range(latency):
             # Execute load a wake-up dependencies 2 cycles before finishing load.
-            if x + self.params.issue_to_exe_latency == self.params.l1_dcache_latency:
+            if x + self.params.issue_to_exe_latency == self.params.cache_hit_latency:
                 if (
                     self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                     is dec.InstrLabel.LOAD
@@ -312,7 +324,7 @@ class Instr(sim.Component):
                     self.store_to_load_fwd()
                     if self.params.speculate_on_load:
                         self.p_dest.reg_state.set(True)
-            elif x == self.params.l1_dcache_latency - 1:
+            elif x == self.params.cache_hit_latency - 1:
                 if (
                     self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                     is dec.InstrLabel.LOAD
@@ -329,7 +341,12 @@ class Instr(sim.Component):
                 self.p_dest.reg_state.set(True)
                 self.release((self.resources.mshrs, 1))
             self.cache_hit = True
-            self.data_cache.mshrs.pop(0)
+            if self.mshr_owner:
+                self.mshr_owner = False
+                try:
+                    self.data_cache.mshrs.pop(self.address_align)
+                except KeyError:
+                    pass
         if (
             self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD
             and not self.params.speculate_on_load
