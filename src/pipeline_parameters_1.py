@@ -19,12 +19,12 @@ class PipelineParams:
     branch_predictor = "bimodal_predictor"
     bp_entries = 128
     # Data cache parameters
-    dcache_mshrs = 2
+    dcache_mshrs = 4
     # Dcache latencies
-    cache_hit_latency = 2
-    l1_dcache_miss_latency = 6
-    l2_dcache_miss_latency = 10
-    l3_dcache_miss_latency = 30
+    cache_hit_latency = 3
+    l1_dcache_miss_latency = 12
+    l2_dcache_miss_latency = 30
+    l3_dcache_miss_latency = 144
     # Dcache dimensions
     dcache_line_bytes = 16
     # Constant to shift the address to point a single cache line
