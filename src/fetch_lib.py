@@ -61,7 +61,7 @@ class FetchUnit(sim.Component):
     def process(self):
         # Condition to end fetch process, if the bb_name pointer reach END and the ROB is empty the fetch process
         # is terminated
-        while self.bb_name != "END" or self.pe.RobInst.count_inst != 0:
+        while self.bb_name != "END" or self.pe.RoBInst.rob_list:
             # Request fetch width port
             yield self.request(self.pe.ResInst.fetch_resource)
             if len(self.pe.ResInst.miss_branch) != 0:
