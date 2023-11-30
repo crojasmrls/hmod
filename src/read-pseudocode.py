@@ -6,7 +6,7 @@ import rv64uih_lib as dec
 import konata_lib as kon
 import counters_lib as pec
 
-# In recent version of Salabim it is necessary to disable the yieldless atribute to model with coroutines
+# In recent version of Salabim it is necessary to disable the yieldless attribute to model with coroutines
 try:
     sim.yieldless(False)
 except AttributeError:
@@ -20,7 +20,7 @@ program4 = "c_implementations/bubblesort.s"
 program5 = "c_implementations/spmv_main.s"
 konata_out = "konata_signature.txt"
 torture_out = "torture_signature.sig"
-cycles = 1000000
+cycles = 4000000
 konata_dump_on = True
 torture_dump_on = True
 params_1 = par1.PipelineParams
@@ -51,7 +51,7 @@ PEInst0 = pe.PE(
 #                 konata_signature=KonataSignatureInst)
 
 PEInst0.ASMParserInst.read_program("../risc-v-examples/" + program5, mem_map_1)
-PEInst0.ResInst.RegisterFileInst.init_regs(init_reg_values, register_table)
+PEInst0.RFInst.init_regs(init_reg_values, register_table)
 # PEInst0.InstrCacheInst.print_program()
 
 # record start time

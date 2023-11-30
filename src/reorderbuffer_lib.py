@@ -1,11 +1,8 @@
-import salabim as sim
 import rv64uih_lib as dec
 
 
 class ReorderBuffer:
-    def __init__(self, rob_entries):
-        self.rob_entries = rob_entries
-        self.rob_resource = sim.Resource("rob_resource", capacity=self.rob_entries)
+    def __init__(self):
         self.rob_list = []
 
     def instr_end(self, instr):
@@ -22,7 +19,7 @@ class ReorderBuffer:
                 == dec.InstrLabel.STORE
             ):
                 store.back2back = True
-                store.resources.store_state.set(True)
+                store.pe.ResInst.store_state.set(True)
 
     def store_next(self, reference_instr):
         store_instr = None
@@ -52,11 +49,11 @@ class ReorderBuffer:
 
     @staticmethod
     def release_resources(instr):
-        instr.konata_signature.retire_instr(instr.thread_id, instr.instr_id, True)
+        instr.pe.konata_signature.retire_instr(instr.pe.thread_id, instr.instr_id, True)
         if instr.mshr_owner:
             instr.mshr_owner = False
             try:
-                instr.data_cache.mshrs.pop(instr.address_align)
+                instr.pe.DataCacheInst.mshrs.pop(instr.address_align)
             except KeyError:
                 pass
         for resource in instr.claimed_resources():

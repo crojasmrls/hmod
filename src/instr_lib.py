@@ -7,25 +7,16 @@ class Instr(sim.Component):
     def setup(
         self,
         decoded_fields,
-        params,
-        resources,
-        konata_signature,
-        performance_counters,
-        thread_id,
         instr_id,
         fetch_unit,
-        data_cache,
         bb_name,
         offset,
         bp_take_branch,
         bp_tag_index,
     ):
         self.decoded_fields = decoded_fields
-        self.params = params
-        # Resources pointer
-        self.resources = resources
         self.fetch_unit = fetch_unit
-        self.data_cache = data_cache
+        self.pe = self.fetch_unit.pe
         # Registers
         self.p_sources = []
         self.p_dest = None
@@ -47,10 +38,7 @@ class Instr(sim.Component):
         self.cache_hit = True
         self.mshr_owner = False
         # Event Trace
-        self.thread_id = thread_id
         self.instr_id = instr_id
-        self.konata_signature = konata_signature
-        self.performance_counters = performance_counters
 
     def process(self):
         yield from self.front_end()
@@ -68,68 +56,73 @@ class Instr(sim.Component):
 
     def front_end(self):
         yield self.hold(1)  # Hold for fetch stage
-        yield self.request(self.resources.decode_ports)
+        yield self.request(self.pe.ResInst.decode_ports)
         self.fetch_unit.release_fetch()
-        self.konata_signature.print_stage("FET", "DEC", self.thread_id, self.instr_id)
+        self.pe.konata_signature.print_stage(
+            "FET", "DEC", self.pe.thread_id, self.instr_id
+        )
         yield self.hold(1)  # Hold for decode stage
-        # Front end Resourses
-        yield self.request(self.resources.rename_resource)
-        yield self.request(self.resources.rename_ports)
-        yield self.request(self.resources.RobInst.rob_resource)
+        # Front end Resources
+        yield self.request(self.pe.ResInst.rename_resource)
+        yield self.request(self.pe.ResInst.rename_ports)
+        yield self.request(self.pe.ResInst.rob_resource)
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
-            yield self.request(self.resources.brob_resource)
+            yield self.request(self.pe.ResInst.brob_resource)
         yield from self.renaming()
 
     def renaming(self):
-        self.konata_signature.print_stage("DEC", "RNM", self.thread_id, self.instr_id)
+        self.pe.konata_signature.print_stage(
+            "DEC", "RNM", self.pe.thread_id, self.instr_id
+        )
         self.p_sources = [
-            self.resources.RegisterFileInst.get_reg(src)
-            for src in self.decoded_fields.sources
+            self.pe.RFInst.get_reg(src) for src in self.decoded_fields.sources
         ]
         # Request physical destination
         if self.decoded_fields.instr_tuple[dec.INTFields.DEST]:
             if self.decoded_fields.dest != 0:
-                yield self.request(self.resources.RegisterFileInst.FRL_resource)
+                yield self.request(self.pe.RFInst.FRL_resource)
                 self.p_dest = PhysicalRegister(
                     state=False, value=self.decoded_fields.dest
                 )
-                self.resources.RegisterFileInst.set_reg(
-                    self.decoded_fields.dest, self.p_dest
-                )
+                self.pe.RFInst.set_reg(self.decoded_fields.dest, self.p_dest)
             else:
-                self.p_dest = self.resources.RegisterFileInst.dummy_reg
-        # Create RAT chekpoit
+                self.p_dest = self.pe.RFInst.dummy_reg
+        # Create RAT checkpoint
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
-            self.resources.RegisterFileInst.push_rat(self)
-        self.release((self.resources.rename_resource, 1))
-        self.release((self.resources.decode_ports, 1))
+            self.pe.RFInst.push_rat(self)
+        self.release((self.pe.ResInst.rename_resource, 1))
+        self.release((self.pe.ResInst.decode_ports, 1))
         yield self.hold(1)  # Hold for renaming stage
 
     def arith_queue(self):
-        yield self.request(self.resources.int_queue)
+        yield self.request(self.pe.ResInst.int_queue)
         yield from self.dispatch_alloc()
-        self.konata_signature.print_stage("ALL", "QUE", self.thread_id, self.instr_id)
+        self.pe.konata_signature.print_stage(
+            "ALL", "QUE", self.pe.thread_id, self.instr_id
+        )
         while not self.psrcs_hit:
             yield from self.issue_logic()
             yield from self.fu_request()
             yield from self.read_registers()
-            # Chek ready of o p_sources to confirm speculation
+            # Check ready of o p_sources to confirm speculation
             self.check_psrcs_hit()
             if not self.psrcs_hit:
-                self.konata_signature.print_stage(
-                    "RRE", "QUE", self.thread_id, self.instr_id
+                self.pe.konata_signature.print_stage(
+                    "RRE", "QUE", self.pe.thread_id, self.instr_id
                 )
-                # Release bloocking FU
+                # Release blocking FU
                 if not self.decoded_fields.instr_tuple[dec.INTFields.PIPELINED]:
-                    self.release((self.resources.int_units, 1))
+                    self.release((self.pe.ResInst.int_units, 1))
         yield from self.execution()
 
     def ls_buffer(self):
-        yield self.request(self.resources.LoadStoreQueueInst.lsu_slots)
+        yield self.request(self.pe.ResInst.lsb_slots)
         yield from self.dispatch_alloc()
-        self.konata_signature.print_stage("ALL", "LSB", self.thread_id, self.instr_id)
+        self.pe.konata_signature.print_stage(
+            "ALL", "LSB", self.pe.thread_id, self.instr_id
+        )
         # Request of cache port
-        yield self.request(self.resources.cache_ports)
+        yield self.request(self.pe.ResInst.cache_ports)
         while not self.psrcs_hit:
             yield from self.issue_logic()
             if (
@@ -140,8 +133,8 @@ class Instr(sim.Component):
             yield from self.read_registers()
             self.check_psrcs_hit()
             if not self.psrcs_hit:
-                self.konata_signature.print_stage(
-                    "RRE", "LSB", self.thread_id, self.instr_id
+                self.pe.konata_signature.print_stage(
+                    "RRE", "LSB", self.pe.thread_id, self.instr_id
                 )
         yield from self.data_cache_pipeline()
 
@@ -152,33 +145,39 @@ class Instr(sim.Component):
                 self.psrcs_hit = False
 
     def dispatch_alloc(self):
-        self.konata_signature.print_stage("RNM", "DIS", self.thread_id, self.instr_id)
-        yield self.request(self.resources.dispatch_ports)
-        self.release((self.resources.rename_ports, 1))
+        self.pe.konata_signature.print_stage(
+            "RNM", "DIS", self.pe.thread_id, self.instr_id
+        )
+        yield self.request(self.pe.ResInst.dispatch_ports)
+        self.release((self.pe.ResInst.rename_ports, 1))
         yield self.hold(1)  # Hold for dispatch stage
-        yield self.request(self.resources.int_alloc_ports)
-        self.konata_signature.print_stage("DIS", "ALL", self.thread_id, self.instr_id)
-        self.release((self.resources.dispatch_ports, 1))
+        yield self.request(self.pe.ResInst.int_alloc_ports)
+        self.pe.konata_signature.print_stage(
+            "DIS", "ALL", self.pe.thread_id, self.instr_id
+        )
+        self.release((self.pe.ResInst.dispatch_ports, 1))
         yield self.hold(1)  # Hold for allocation stage
-        self.release((self.resources.int_alloc_ports, 1))
+        self.release((self.pe.ResInst.int_alloc_ports, 1))
 
     def issue_logic(self):
         # Wake-up
         for x in self.p_sources:
             yield self.wait(x.reg_state)
-        self.konata_signature.print_stage("QUE", "WUP", self.thread_id, self.instr_id)
+        self.pe.konata_signature.print_stage(
+            "QUE", "WUP", self.pe.thread_id, self.instr_id
+        )
 
     def fu_request(self):
         # FU request
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.INT:
-            yield self.request(self.resources.int_units)
+            yield self.request(self.pe.ResInst.int_units)
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
-            yield self.request(self.resources.branch_units)
-            if self.params.branch_in_int_alu:
-                yield self.request(self.resources.int_units)
+            yield self.request(self.pe.ResInst.branch_units)
+            if self.pe.params.branch_in_int_alu:
+                yield self.request(self.pe.ResInst.int_units)
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.ARITH:
-            self.konata_signature.print_stage(
-                "WUP", "ISS", self.thread_id, self.instr_id
+            self.pe.konata_signature.print_stage(
+                "WUP", "ISS", self.pe.thread_id, self.instr_id
             )
             yield self.hold(1)  # Hold for issue stage
         # Release FU
@@ -187,17 +186,19 @@ class Instr(sim.Component):
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                 is dec.InstrLabel.INT
             ):
-                self.release((self.resources.int_units, 1))
+                self.release((self.pe.ResInst.int_units, 1))
             if (
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                 in dec.InstrLabel.CTRL
             ):
-                self.release((self.resources.branch_units, 1))
-                if self.params.branch_in_int_alu:
-                    self.release((self.resources.int_units, 1))
+                self.release((self.pe.ResInst.branch_units, 1))
+                if self.pe.params.branch_in_int_alu:
+                    self.release((self.pe.ResInst.int_units, 1))
 
     def read_registers(self):
-        self.konata_signature.print_stage("ISS", "RRE", self.thread_id, self.instr_id)
+        self.pe.konata_signature.print_stage(
+            "ISS", "RRE", self.pe.thread_id, self.instr_id
+        )
         # Do computation, all the values are computed in advance
         # the issue latencies are controlled to match the pipeline latencies
         self.decoded_fields.instr_tuple[dec.INTFields.EXEC](self)
@@ -209,20 +210,22 @@ class Instr(sim.Component):
         ):
             self.p_dest.reg_state.set(True)
         # Back to back issue of stores, It checks if a store is the following instruction in the ROB
-        self.resources.RobInst.store_next2commit(self)
+        self.pe.RoBInst.store_next2commit(self)
         yield self.hold(1)  # Hold for rre stage
 
     def stores_lock(self):
-        # Store locks untill it is the next head of the ROB
-        if self.resources.RobInst.instr_end(self) and not self.back2back:
-            self.resources.store_state.set(False)
-            self.konata_signature.print_stage(
-                "WUP", "LCK", self.thread_id, self.instr_id
+        # Store locks until it is the next head of the ROB
+        if self.pe.RoBInst.instr_end(self) and not self.back2back:
+            self.pe.ResInst.store_state.set(False)
+            self.pe.konata_signature.print_stage(
+                "WUP", "LCK", self.pe.thread_id, self.instr_id
             )
-            yield self.wait(self.resources.store_state)
+            yield self.wait(self.pe.ResInst.store_state)
 
     def execution(self):
-        self.konata_signature.print_stage("RRE", "EXE", self.thread_id, self.instr_id)
+        self.pe.konata_signature.print_stage(
+            "RRE", "EXE", self.pe.thread_id, self.instr_id
+        )
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
             self.branch_evaluation()
         # Execution stage
@@ -231,17 +234,17 @@ class Instr(sim.Component):
             yield self.hold(1)  # Hold for exe stage
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
             self.branch_predictor_write()
-        self.release((self.resources.int_queue, 1))
+        self.release((self.pe.ResInst.int_queue, 1))
 
     def fu_last_cycle(self, cycles):
         if (
-            cycles + self.params.issue_to_exe_latency
+            cycles + self.pe.params.issue_to_exe_latency
             == self.decoded_fields.instr_tuple[dec.INTFields.LATENCY]
         ):
             if self.decoded_fields.instr_tuple[dec.INTFields.DEST]:
                 self.p_dest.reg_state.set(True)  # Set ready bit to issue
             if not self.decoded_fields.instr_tuple[dec.INTFields.PIPELINED]:
-                self.release((self.resources.int_units, 1))
+                self.release((self.pe.ResInst.int_units, 1))
 
     def branch_evaluation(self):
         self.bp_hit = (not self.branch_result and not self.bp_take_branch[0]) or (
@@ -250,88 +253,92 @@ class Instr(sim.Component):
             and self.decoded_fields.branch_target == self.bp_take_branch[1]
         )
         if not self.bp_hit:
-            self.resources.miss_branch = [True]
+            self.pe.ResInst.miss_branch = [True]
             self.fetch_unit.flushed = True
             if self.branch_result:
                 if (
                     self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                     is dec.InstrLabel.JALR
                 ):
-                    self.resources.branch_target = [(self.p_sources[0].value, 0)]
+                    self.pe.ResInst.branch_target = [(self.p_sources[0].value, 0)]
                     self.decoded_fields.branch_target = self.p_sources[0].value
                 else:
-                    self.resources.branch_target = [
+                    self.pe.ResInst.branch_target = [
                         (self.decoded_fields.branch_target, 0)
                     ]
             else:
-                self.resources.branch_target = [(self.bb_name, self.offset + 1)]
+                self.pe.ResInst.branch_target = [(self.bb_name, self.offset + 1)]
             self.recovery()
 
     def recovery(self):
-        self.resources.RegisterFileInst.recovery_rat(self)
-        self.resources.RobInst.recovery_rob(self)
-        if self.resources.finished:
-            self.resources.finished = False
+        self.pe.RFInst.recovery_rat(self)
+        self.pe.RoBInst.recovery_rob(self)
+        if self.pe.ResInst.finished:
+            self.pe.ResInst.finished = False
         if self.fetch_unit.ispassive():
-            self.fetch_unit.bb_name = self.fetch_unit.instr_cache.get_first_bb()
+            self.fetch_unit.bb_name = self.pe.InstrCacheInst.get_first_bb()
             self.fetch_unit.offset = 0
             self.fetch_unit.activate()
 
     def branch_predictor_write(self):
-        self.resources.branch_predictor.write_entry(
+        self.pe.BPInst.write_entry(
             self.bp_tag_index[0],
             self.bp_tag_index[1],
             self.bp_hit,
             self.decoded_fields.branch_target,
         )
-        if self.params.exe_brob_release:
-            self.resources.RegisterFileInst.release_shadow_rat(self)
-            self.release((self.resources.brob_resource, 1))
+        if self.pe.params.exe_brob_release:
+            self.pe.RFInst.release_shadow_rat(self)
+            self.release((self.pe.ResInst.brob_resource, 1))
 
     def data_cache_pipeline(self):
-        self.konata_signature.print_stage("RRE", "LSU", self.thread_id, self.instr_id)
-        yield self.request(self.resources.mshrs)
-        self.konata_signature.print_stage("RRE", "MEM", self.thread_id, self.instr_id)
-        self.release((self.resources.cache_ports, 1))
+        self.pe.konata_signature.print_stage(
+            "RRE", "LSU", self.pe.thread_id, self.instr_id
+        )
+        yield self.request(self.pe.ResInst.mshrs)
+        self.pe.konata_signature.print_stage(
+            "RRE", "MEM", self.pe.thread_id, self.instr_id
+        )
+        self.release((self.pe.ResInst.cache_ports, 1))
         self.address_align = (
-            self.address >> self.params.mshr_shamt
-        ) << self.params.mshr_shamt
+            self.address >> self.pe.params.mshr_shamt
+        ) << self.pe.params.mshr_shamt
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD:
-            latency = self.data_cache.load_latency(
+            latency = self.pe.DataCacheInst.load_latency(
                 self.address_align,
                 self.decoded_fields.instr_tuple[dec.INTFields.N_BYTES],
             )
         else:
-            latency = self.data_cache.store_latency(
+            latency = self.pe.DataCacheInst.store_latency(
                 self.address_align,
                 self.decoded_fields.instr_tuple[dec.INTFields.N_BYTES],
             )
-        self.cache_hit = latency == self.params.cache_hit_latency
+        self.cache_hit = latency == self.pe.params.cache_hit_latency
         if not self.cache_hit:
-            self.data_cache.mshrs[self.address_align] = latency
+            self.pe.DataCacheInst.mshrs[self.address_align] = latency
             self.mshr_owner = True
-        mshr_latency = self.data_cache.mshrs.get(self.address_align)
+        mshr_latency = self.pe.DataCacheInst.mshrs.get(self.address_align)
         if mshr_latency:
             self.cache_hit = False
             latency = mshr_latency
         for x in range(latency):
             # Execute load a wake-up dependencies 2 cycles before finishing load.
-            if x + self.params.issue_to_exe_latency == self.params.cache_hit_latency:
+            if x + self.pe.params.issue_to_exe_latency == self.pe.params.cache_hit_latency:
                 if (
                     self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                     is dec.InstrLabel.LOAD
                 ):
                     self.store_to_load_fwd()
-                    if self.params.speculate_on_load:
+                    if self.pe.params.speculate_on_load:
                         self.p_dest.reg_state.set(True)
-            elif x == self.params.cache_hit_latency - 1:
+            elif x == self.pe.params.cache_hit_latency - 1:
                 if (
                     self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                     is dec.InstrLabel.LOAD
                 ):
                     self.p_dest.reg_state.set(self.cache_hit)
                 if self.cache_hit:
-                    self.release((self.resources.mshrs, 1))
+                    self.release((self.pe.ResInst.mshrs, 1))
             yield self.hold(1)  # Hold for mem stage
         if not self.cache_hit:
             if (
@@ -339,60 +346,67 @@ class Instr(sim.Component):
                 is dec.InstrLabel.LOAD
             ):
                 self.p_dest.reg_state.set(True)
-                self.release((self.resources.mshrs, 1))
+                self.release((self.pe.ResInst.mshrs, 1))
             self.cache_hit = True
             if self.mshr_owner:
                 self.mshr_owner = False
                 try:
-                    self.data_cache.mshrs.pop(self.address_align)
+                    self.pe.DataCacheInst.mshrs.pop(self.address_align)
                 except KeyError:
                     pass
         if (
             self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD
-            and not self.params.speculate_on_load
+            and not self.pe.params.speculate_on_load
         ):
             self.p_dest.reg_state.set(True)
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE:
-            self.data_cache.dc_store(self.address, self.p_sources[0].value)
+            self.pe.DataCacheInst.dc_store(self.address, self.p_sources[0].value)
 
     def store_to_load_fwd(self):
-        next_store = self.resources.RobInst.store_next(self)
+        next_store = self.pe.RoBInst.store_next(self)
         # Store to Load forwarding
         if not next_store:
-            self.p_dest.value = self.data_cache.dc_load(self.address)
+            self.p_dest.value = self.pe.DataCacheInst.dc_load(self.address)
         elif next_store.address == self.address:
             self.p_dest.value = next_store.p_sources[0].value
         else:
-            self.p_dest.value = self.data_cache.dc_load(self.address)
+            self.p_dest.value = self.pe.DataCacheInst.dc_load(self.address)
 
     def wait_commit(self):
-        self.konata_signature.print_stage("EXE", "CMP", self.thread_id, self.instr_id)
+        self.pe.konata_signature.print_stage(
+            "EXE", "CMP", self.pe.thread_id, self.instr_id
+        )
         yield self.hold(1)  # # Hold for cmp stage
-        self.konata_signature.print_stage("CMP", "ROB", self.thread_id, self.instr_id)
+        self.pe.konata_signature.print_stage(
+            "CMP", "ROB", self.pe.thread_id, self.instr_id
+        )
         # Pooling to wait rob head
-        while self.resources.RobInst.instr_end(self):
+        while self.pe.RoBInst.instr_end(self):
             yield self.hold(1)
 
     def commit(self):
         # check if a store is the following instruction in the ROB after a flush
-        self.resources.RobInst.store_next2commit(self)
+        self.pe.RoBInst.store_next2commit(self)
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.CALL:
             dec.Calls.call_functions(self)
         if self.decoded_fields.is_magic:
             dec.Magics.magic_functions(self)
         # Advance Rob head to commit next instruction
-        self.resources.RobInst.release_instr()
-        yield self.request(self.resources.commit_ports)
+        self.pe.RoBInst.release_instr()
+        yield self.request(self.pe.ResInst.commit_ports)
         # Commit
-        self.konata_signature.print_stage("ROB", "COM", self.thread_id, self.instr_id)
+        self.pe.konata_signature.print_stage(
+            "ROB", "COM", self.pe.thread_id, self.instr_id
+        )
         yield self.hold(1)
 
     def tracer(self):
         # Counters increment
-        if self.performance_counters.CountCtrl.is_enable():
-            self.performance_counters.ECInst.increase_counter("commits")
-            self.performance_counters.ECInst.set_counter(
-                "commit_cycles", self.performance_counters.ECInst.read_counter("cycles")
+        if self.pe.performance_counters.CountCtrl.is_enable():
+            self.pe.performance_counters.ECInst.increase_counter("commits")
+            self.pe.performance_counters.ECInst.set_counter(
+                "commit_cycles",
+                self.pe.performance_counters.ECInst.read_counter("cycles"),
             )
         # Torture trace
         if self.decoded_fields.instr_tuple[dec.INTFields.DEST]:
@@ -403,8 +417,8 @@ class Instr(sim.Component):
             (self.decoded_fields.sources[i], self.p_sources[i].value)
             for i in range(0, len(self.decoded_fields.sources))
         ]
-        self.konata_signature.print_torture(
-            self.thread_id,
+        self.pe.konata_signature.print_torture(
+            self.pe.thread_id,
             self.instr_id,
             self.decoded_fields.line_number,
             self.decoded_fields.instruction,
@@ -415,17 +429,16 @@ class Instr(sim.Component):
         )
 
     def finish(self):
-        # Free claimed resources
-        for resource in self.claimed_resources():
-            self.release((resource, 1))
         # Remove RAT shadow copy when is a branch
         if (
-            not self.params.exe_brob_release
+            not self.pe.params.exe_brob_release
             and self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
             in dec.InstrLabel.CTRL
         ):
-            self.resources.RegisterFileInst.release_shadow_rat(self)
-            self.release((self.resources.brob_resource, 1))
-        # if self.resources.finished and (self.resources.RobInst.rob_list == []):
+            self.pe.RFInst.release_shadow_rat(self)
+        # Free claimed pe.ResInst
+        for resource in self.claimed_resources():
+            self.release((resource, 1))
+        # if self.pe.ResInst.finished and (self.pe.RobInst.rob_list == []):
         #    print("Program end")
-        self.konata_signature.retire_instr(self.thread_id, self.instr_id, False)
+        self.pe.konata_signature.retire_instr(self.pe.thread_id, self.instr_id, False)

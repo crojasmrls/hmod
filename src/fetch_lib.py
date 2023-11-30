@@ -8,24 +8,12 @@ import instr_lib as ins
 class FetchUnit(sim.Component):
     def setup(
         self,
-        instr_cache,
-        params,
-        resources,
-        thread_id,
-        konata_signature,
-        performance_counters,
-        data_cache,
+        pe,
     ):
-        self.instr_cache = instr_cache
-        self.params = params
+        self.pe = pe
         self.offset = 0
         self.bb_name = "main"
         self.branch_taken = False
-        self.resources = resources
-        self.thread_id = thread_id
-        self.konata_signature = konata_signature
-        self.performance_counters = performance_counters
-        self.data_cache = data_cache
         self.instr_id = 0
         self.bp_take_branch = False, None
         self.flushed = False
@@ -33,10 +21,10 @@ class FetchUnit(sim.Component):
 
     def create_instr(self):
         self.instr_id += 1
-        instr = self.instr_cache.get_instr(self.bb_name, self.offset)
-        if self.params.bp_enable:
-            bp_tag_index = self.bp_tag_index(instr[1], self.params.bp_entries)
-            self.bp_take_branch = self.resources.branch_predictor.read_entry(
+        instr = self.pe.InstrCacheInst.get_instr(self.bb_name, self.offset)
+        if self.pe.params.bp_enable:
+            bp_tag_index = self.bp_tag_index(instr[1], self.pe.params.bp_entries)
+            self.bp_take_branch = self.pe.BPInst.read_entry(
                 bp_tag_index[0], bp_tag_index[1]
             )
         else:
@@ -46,23 +34,17 @@ class FetchUnit(sim.Component):
             decoded_fields=dec.DecodedFields(
                 instruction=instr[0], line_number=instr[1]
             ),
-            params=self.params,
-            resources=self.resources,
-            thread_id=self.thread_id,
             instr_id=self.instr_id,
-            konata_signature=self.konata_signature,
-            performance_counters=self.performance_counters,
-            fetch_unit=self,
-            data_cache=self.data_cache,
-            bb_name=self.bb_name,
-            offset=self.offset,
             bp_take_branch=self.bp_take_branch,
             bp_tag_index=bp_tag_index,
+            bb_name=self.bb_name,
+            offset=self.offset,
+            fetch_unit=self,
             priority=0,
         )
-        self.resources.RobInst.add_instr(instr_inst)
-        self.konata_signature.new_instr(
-            self.thread_id, self.instr_id, instr[1], instr[0]
+        self.pe.RoBInst.add_instr(instr_inst)
+        self.pe.konata_signature.new_instr(
+            self.pe.thread_id, self.instr_id, instr[1], instr[0]
         )
 
     @staticmethod
@@ -79,26 +61,28 @@ class FetchUnit(sim.Component):
     def process(self):
         # Condition to end fetch process, if the bb_name pointer reach END and the ROB is empty the fetch process
         # is terminated
-        while self.bb_name != "END" or self.resources.RobInst.count_inst != 0:
+        while self.bb_name != "END" or self.pe.RobInst.count_inst != 0:
             # Request fetch width port
-            yield self.request(self.resources.fetch_resource)
-            if len(self.resources.miss_branch) != 0:
+            yield self.request(self.pe.ResInst.fetch_resource)
+            if len(self.pe.ResInst.miss_branch) != 0:
                 self.flushed = False
-                if self.resources.miss_branch.pop(0):
-                    branch_target = self.resources.branch_target.pop(0)
-                    if branch_target[1] == self.instr_cache.get_block_len(
+                if self.pe.ResInst.miss_branch.pop(0):
+                    branch_target = self.pe.ResInst.branch_target.pop(0)
+                    if branch_target[1] == self.pe.InstrCacheInst.get_block_len(
                         branch_target[0]
                     ):
-                        self.bb_name = self.instr_cache.get_next_block(branch_target[0])
+                        self.bb_name = self.pe.InstrCacheInst.get_next_block(
+                            branch_target[0]
+                        )
                         self.offset = 0
                     else:
                         self.bb_name = branch_target[0]
                         self.offset = branch_target[1]
                 else:
-                    self.resources.branch_target.pop(0)
+                    self.pe.ResInst.branch_target.pop(0)
             # If fetch process reach end of file passivate it
             if self.bb_name == "END":
-                self.resources.finished = True
+                self.pe.ResInst.finished = True
                 yield self.passivate()
             else:
                 # Create new instruction
@@ -112,16 +96,21 @@ class FetchUnit(sim.Component):
                 self.bb_name = self.bp_take_branch[1]
                 self.offset = 0
             else:
-                if self.offset == self.instr_cache.get_block_len(self.bb_name) - 1:
-                    self.bb_name = self.instr_cache.get_next_block(self.bb_name)
+                if (
+                    self.offset
+                    == self.pe.InstrCacheInst.get_block_len(self.bb_name) - 1
+                ):
+                    self.bb_name = self.pe.InstrCacheInst.get_next_block(self.bb_name)
                     self.offset = 0
                     # Check if the basic block is empty
-                    while self.instr_cache.get_block_len(self.bb_name) == 0:
+                    while self.pe.InstrCacheInst.get_block_len(self.bb_name) == 0:
                         # If fetch process reach end of file passivate it
                         if self.bb_name == "END":
-                            self.resources.finished = True
+                            self.pe.ResInst.finished = True
                             yield self.passivate()
-                        self.bb_name = self.instr_cache.get_next_block(self.bb_name)
+                        self.bb_name = self.pe.InstrCacheInst.get_next_block(
+                            self.bb_name
+                        )
                 else:
                     self.offset = self.offset + 1
             # yield self.hold(1)
