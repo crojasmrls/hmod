@@ -1,8 +1,4 @@
 import salabim as sim
-import reorderbuffer_lib as rob
-import reg_file_lib as rf
-import lsq_lib as lsq
-import bp_lib as bp
 
 
 class Resources:
@@ -17,15 +13,18 @@ class Resources:
         self.branch_units = sim.Resource(
             "branch_units", capacity=self.params.branch_units
         )
+        self.rob_resource = sim.Resource(
+            "rob_resource", capacity=self.params.rob_entries
+        )
         self.int_queue = sim.Resource("int_queue", capacity=self.params.int_queue_slots)
-        self.LoadStoreQueueInst = lsq.LoadStoreQueue(lsu_slots=self.params.lsu_slots)
+        self.lsb_slots = sim.Resource("lsb_slots", capacity=self.params.lsb_slots)
         self.brob_resource = sim.Resource(
             "brob_resource", capacity=self.params.brob_entries
         )
         self.decode_ports = sim.Resource(
             "decode_ports", capacity=self.params.fetch_width
         )
-        # This resource is used to serialize teh renaming procces
+        # This resource is used to serialize teh renaming process
         self.rename_resource = sim.Resource("rename_resource", capacity=1)
         # Max number of instructions in renaming
         self.rename_ports = sim.Resource(
@@ -44,16 +43,8 @@ class Resources:
             "commit_ports", capacity=self.params.commit_width
         )
         # self.h_units = sim.Resource('h_units', capacity=1) not implemented for now
-        # instances
-        self.RobInst = rob.ReorderBuffer(rob_entries=self.params.rob_entries)
-        self.RegisterFileInst = rf.RegFile(
-            physical_registers=self.params.physical_registers
-        )
         # states
         self.finished = False
         # Branch Calculation queues
         self.miss_branch = []
         self.branch_target = []
-        # Branch Predictor
-        if self.params.branch_predictor == "bimodal_predictor":
-            self.branch_predictor = bp.BimodalPredictor()

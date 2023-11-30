@@ -317,9 +317,9 @@ class Calls:
     def call_functions(instr):
         return {
             "printf": lambda: Calls.printf_call(
-                instr.p_sources.copy(), instr.data_cache
+                instr.p_sources.copy(), instr.pe.DataCacheInst
             ),
-            "puts": lambda: Calls.puts_call(instr.p_sources.copy(), instr.data_cache),
+            "puts": lambda: Calls.puts_call(instr.p_sources.copy(), instr.pe.DataCacheInst),
         }.get(instr.decoded_fields.call_code, lambda: None)()
 
     @staticmethod
@@ -344,13 +344,13 @@ class Magics:
     def magic_functions(instr):
         return {
             1: lambda: Magics.perf_count_start(
-                instr.performance_counters, instr.instr_id
+                instr.pe.performance_counters, instr.instr_id
             ),
             2: lambda: Magics.perf_count_stop(
-                instr.performance_counters, instr.instr_id
+                instr.pe.performance_counters, instr.instr_id
             ),
             3: lambda: Magics.perf_count_reset(
-                instr.performance_counters, instr.instr_id
+                instr.pe.performance_counters, instr.instr_id
             ),
         }.get(instr.decoded_fields.immediate, lambda: None)()
 
