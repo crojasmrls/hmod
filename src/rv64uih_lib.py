@@ -319,7 +319,9 @@ class Calls:
             "printf": lambda: Calls.printf_call(
                 instr.p_sources.copy(), instr.pe.DataCacheInst
             ),
-            "puts": lambda: Calls.puts_call(instr.p_sources.copy(), instr.pe.DataCacheInst),
+            "puts": lambda: Calls.puts_call(
+                instr.p_sources.copy(), instr.pe.DataCacheInst
+            ),
         }.get(instr.decoded_fields.call_code, lambda: None)()
 
     @staticmethod
