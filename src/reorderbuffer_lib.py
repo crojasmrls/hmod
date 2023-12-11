@@ -50,6 +50,15 @@ class ReorderBuffer:
     @staticmethod
     def release_resources(instr):
         instr.pe.konata_signature.retire_instr(instr.pe.thread_id, instr.instr_id, True)
+        # Release LS Queues
+        try:
+            if instr is instr.pe.ResInst.load_queue[-1]:
+                instr.pe.ResInst.load_queue.pop()
+            if instr is instr.pe.ResInst.store_queue[-1]:
+                instr.pe.ResInst.store_queue.pop()
+        except IndexError:
+            pass
+        # Release MSHR
         if instr.mshr_owner:
             instr.mshr_owner = False
             try:

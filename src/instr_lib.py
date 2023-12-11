@@ -33,7 +33,7 @@ class Instr(sim.Component):
         self.address_align = None
         self.data = None
         self.older_store = None
-        self.load_ready = sim.State("load_ready", value=False)
+        self.ls_ready = sim.State("ls_ready", value=False)
         # Speculative Issue
         self.back2back = False
         self.psrcs_hit = False
@@ -161,8 +161,8 @@ class Instr(sim.Component):
             self.older_store = self.pe.ResInst.store_queue[-1]
         self.release((self.pe.ResInst.ls_ordering, 1))
         yield from self.agu_issue()
-        self.load_ready.set(self.load_disambiguation())
-        yield self.wait(self.load_ready)
+        self.ls_ready.set(self.load_disambiguation())
+        yield self.wait(self.ls_ready)
         yield self.request(self.pe.ResInst.cache_ports)
         yield from self.data_cache_pipeline()
 
@@ -184,28 +184,46 @@ class Instr(sim.Component):
             "ALL", "SQE", self.pe.thread_id, self.instr_id
         )
         yield self.request(self.pe.ResInst.ls_ordering)
+        if not self.pe.ResInst.store_queue:
+            self.ls_ready.set(True)
         self.pe.ResInst.store_queue.append(self)
         self.release((self.pe.ResInst.ls_ordering, 1))
         yield from self.agu_issue()
         self.store_disambiguation()
+        yield self.wait(self.ls_ready)
         yield from self.stores_lock()
         yield self.request(self.pe.ResInst.cache_ports)
+        self.pe.ResInst.store_queue.pop(0)
+        if self.pe.ResInst.store_queue:
+            self.pe.ResInst.store_queue[0].ls_ready.set(True)
         yield from self.data_cache_pipeline()
 
     def store_disambiguation(self):
         for load in self.pe.ResInst.load_queue:
             if load.older_store is self and load.address:
-                load.load_ready.set(self.address != load.address)
+                load.ls_ready.set(self.address != load.address)
 
     def agu_issue(self):
         while not self.psrcs_hit:
-            yield self.wait(self.p_sources[1].reg_state)
+            if (
+                self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                is dec.InstrLabel.LOAD
+            ):
+                yield self.wait(self.p_sources[0].reg_state)
+            else:
+                yield self.wait(self.p_sources[1].reg_state)
             self.pe.konata_signature.print_stage(
                 "QUE", "WUP", self.pe.thread_id, self.instr_id
             )
             yield self.request(self.pe.ResInst.agu_resource)
             yield from self.read_registers()
-            self.check_psrcs_hit()
+            if (
+                self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                is dec.InstrLabel.LOAD
+            ):
+                self.check_psrcs_hit()
+            else:
+                self.psrcs_hit = self.p_sources[1].reg_state.value.value
             if not self.psrcs_hit:
                 self.pe.konata_signature.print_stage(
                     "RRE", "LSQ", self.pe.thread_id, self.instr_id
@@ -470,6 +488,9 @@ class Instr(sim.Component):
             dec.Magics.magic_functions(self)
         # Advance Rob head to commit next instruction
         self.pe.RoBInst.release_instr()
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD:
+            if self.pe.ResInst.load_queue:
+                self.pe.ResInst.load_queue.pop(0)
         yield self.request(self.pe.ResInst.commit_ports)
         # Commit
         self.pe.konata_signature.print_stage(
