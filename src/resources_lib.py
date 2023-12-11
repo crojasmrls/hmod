@@ -18,6 +18,10 @@ class Resources:
         )
         self.int_queue = sim.Resource("int_queue", capacity=self.params.int_queue_slots)
         self.lsb_slots = sim.Resource("lsb_slots", capacity=self.params.lsb_slots)
+        self.lq_slots = sim.Resource("lq_slots", capacity=self.params.load_queue_slots)
+        self.sq_slots = sim.Resource("sq_slots", capacity=self.params.store_queue_slots)
+        self.ls_ordering = sim.Resource("ls_ordering", capacity=1)
+        self.agu_resource = sim.Resource("agu_resource", capacity=1)
         self.brob_resource = sim.Resource(
             "brob_resource", capacity=self.params.brob_entries
         )
@@ -48,3 +52,6 @@ class Resources:
         # Branch Calculation queues
         self.miss_branch = []
         self.branch_target = []
+        # Store list used to track the order of the stores.
+        self.store_queue = []
+        self.load_queue = []

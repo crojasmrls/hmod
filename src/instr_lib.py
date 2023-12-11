@@ -32,6 +32,8 @@ class Instr(sim.Component):
         self.address = None
         self.address_align = None
         self.data = None
+        self.older_store = None
+        self.load_ready = sim.State("load_ready", value=False)
         # Speculative Issue
         self.back2back = False
         self.psrcs_hit = False
@@ -45,7 +47,10 @@ class Instr(sim.Component):
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.ARITH:
             yield from self.arith_queue()
         elif self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.LS:
-            yield from self.ls_buffer()
+            if self.pe.params.OoO_lsu:
+                yield from self.ooo_lsu()
+            else:
+                yield from self.ls_buffer()
         else:
             yield from self.dispatch_alloc()
             yield from self.read_registers()
@@ -137,6 +142,75 @@ class Instr(sim.Component):
                     "RRE", "LSB", self.pe.thread_id, self.instr_id
                 )
         yield from self.data_cache_pipeline()
+
+    def ooo_lsu(self):
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD:
+            yield from self.load_queue()
+        else:
+            yield from self.store_queue()
+
+    def load_queue(self):
+        yield self.request(self.pe.ResInst.lq_slots)
+        yield from self.dispatch_alloc()
+        self.pe.konata_signature.print_stage(
+            "ALL", "LQE", self.pe.thread_id, self.instr_id
+        )
+        yield self.request(self.pe.ResInst.ls_ordering)
+        self.pe.ResInst.load_queue.append(self)
+        if self.pe.ResInst.store_queue:
+            self.older_store = self.pe.ResInst.store_queue[-1]
+        self.release((self.pe.ResInst.ls_ordering, 1))
+        yield from self.agu_issue()
+        self.load_ready.set(self.load_disambiguation())
+        yield self.wait(self.load_ready)
+        yield self.request(self.pe.ResInst.cache_ports)
+        yield from self.data_cache_pipeline()
+
+    def load_disambiguation(self):
+        if not self.older_store:
+            return True
+        for store in self.pe.ResInst.store_queue:
+            if not store.address:
+                return False
+            if store.address == self.address:
+                return False
+            if store is self.older_store:
+                return True
+
+    def store_queue(self):
+        yield self.request(self.pe.ResInst.sq_slots)
+        yield from self.dispatch_alloc()
+        self.pe.konata_signature.print_stage(
+            "ALL", "SQE", self.pe.thread_id, self.instr_id
+        )
+        yield self.request(self.pe.ResInst.ls_ordering)
+        self.pe.ResInst.store_queue.append(self)
+        self.release((self.pe.ResInst.ls_ordering, 1))
+        yield from self.agu_issue()
+        self.store_disambiguation()
+        yield from self.stores_lock()
+        yield self.request(self.pe.ResInst.cache_ports)
+        yield from self.data_cache_pipeline()
+
+    def store_disambiguation(self):
+        for load in self.pe.ResInst.load_queue:
+            if load.older_store is self and load.address:
+                load.load_ready.set(self.address != load.address)
+
+    def agu_issue(self):
+        while not self.psrcs_hit:
+            yield self.wait(self.p_sources[1].reg_state)
+            self.pe.konata_signature.print_stage(
+                "QUE", "WUP", self.pe.thread_id, self.instr_id
+            )
+            yield self.request(self.pe.ResInst.agu_resource)
+            yield from self.read_registers()
+            self.check_psrcs_hit()
+            if not self.psrcs_hit:
+                self.pe.konata_signature.print_stage(
+                    "RRE", "LSQ", self.pe.thread_id, self.instr_id
+                )
+            self.release((self.pe.ResInst.agu_resource, 1))
 
     def check_psrcs_hit(self):
         self.psrcs_hit = True
@@ -323,7 +397,10 @@ class Instr(sim.Component):
             latency = mshr_latency
         for x in range(latency):
             # Execute load a wake-up dependencies 2 cycles before finishing load.
-            if x + self.pe.params.issue_to_exe_latency == self.pe.params.cache_hit_latency:
+            if (
+                x + self.pe.params.issue_to_exe_latency
+                == self.pe.params.cache_hit_latency
+            ):
                 if (
                     self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                     is dec.InstrLabel.LOAD
