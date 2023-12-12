@@ -54,6 +54,8 @@ class Instr(sim.Component):
         else:
             yield from self.dispatch_alloc()
             yield from self.read_registers()
+            # Back to back issue of stores, It checks if a store is the following instruction in the ROB
+            self.pe.RoBInst.store_next2commit(self)
         yield from self.wait_commit()
         yield from self.commit()
         self.tracer()
@@ -118,6 +120,8 @@ class Instr(sim.Component):
                 # Release blocking FU
                 if not self.decoded_fields.instr_tuple[dec.INTFields.PIPELINED]:
                     self.release((self.pe.ResInst.int_units, 1))
+        # Back to back issue of stores, It checks if a store is the following instruction in the ROB
+        self.pe.RoBInst.store_next2commit(self)
         yield from self.execution()
 
     def ls_buffer(self):
@@ -141,6 +145,8 @@ class Instr(sim.Component):
                 self.pe.konata_signature.print_stage(
                     "RRE", "LSB", self.pe.thread_id, self.instr_id
                 )
+        # Back to back issue of stores, It checks if a store is the following instruction in the ROB
+        self.pe.RoBInst.store_next2commit(self)
         yield from self.data_cache_pipeline()
 
     def ooo_lsu(self):
@@ -153,7 +159,7 @@ class Instr(sim.Component):
         yield self.request(self.pe.ResInst.lq_slots)
         yield from self.dispatch_alloc()
         self.pe.konata_signature.print_stage(
-            "ALL", "LQE", self.pe.thread_id, self.instr_id
+            "ALL", "AQE", self.pe.thread_id, self.instr_id
         )
         yield self.request(self.pe.ResInst.ls_ordering)
         self.pe.ResInst.load_queue.append(self)
@@ -181,7 +187,7 @@ class Instr(sim.Component):
         yield self.request(self.pe.ResInst.sq_slots)
         yield from self.dispatch_alloc()
         self.pe.konata_signature.print_stage(
-            "ALL", "SQE", self.pe.thread_id, self.instr_id
+            "ALL", "AQE", self.pe.thread_id, self.instr_id
         )
         yield self.request(self.pe.ResInst.ls_ordering)
         if not self.pe.ResInst.store_queue:
@@ -226,9 +232,14 @@ class Instr(sim.Component):
                 self.psrcs_hit = self.p_sources[1].reg_state.value.value
             if not self.psrcs_hit:
                 self.pe.konata_signature.print_stage(
-                    "RRE", "LSQ", self.pe.thread_id, self.instr_id
+                    "RRE", "AQE", self.pe.thread_id, self.instr_id
                 )
             self.release((self.pe.ResInst.agu_resource, 1))
+        # Back to back issue of stores, It checks if a store is the following instruction in the ROB
+        self.pe.RoBInst.store_next2commit(self)
+        self.pe.konata_signature.print_stage(
+            "EXE", "LSQ", self.pe.thread_id, self.instr_id
+        )
 
     def check_psrcs_hit(self):
         self.psrcs_hit = True
@@ -301,8 +312,6 @@ class Instr(sim.Component):
             and self.decoded_fields.instr_tuple[dec.INTFields.LATENCY] == 1
         ):
             self.p_dest.reg_state.set(True)
-        # Back to back issue of stores, It checks if a store is the following instruction in the ROB
-        self.pe.RoBInst.store_next2commit(self)
         yield self.hold(1)  # Hold for rre stage
 
     def stores_lock(self):
