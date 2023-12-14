@@ -170,6 +170,8 @@ class Instr(sim.Component):
         self.ls_ready.set(self.load_disambiguation())
         yield self.wait(self.ls_ready)
         yield self.request(self.pe.ResInst.cache_ports)
+        # Back to back issue of stores, It checks if a store is the following instruction in the ROB
+        self.pe.RoBInst.store_next2commit(self)
         yield from self.data_cache_pipeline()
 
     def load_disambiguation(self):
@@ -198,16 +200,25 @@ class Instr(sim.Component):
         self.store_disambiguation()
         yield self.wait(self.ls_ready)
         yield from self.stores_lock()
-        yield self.request(self.pe.ResInst.cache_ports)
+        yield self.request(self.pe.ResInst.cache_ports, urgent=True)
+        self.store_release()
         self.pe.ResInst.store_queue.pop(0)
         if self.pe.ResInst.store_queue:
             self.pe.ResInst.store_queue[0].ls_ready.set(True)
+        # Back to back issue of stores, It checks if a store is the following instruction in the ROB
+        self.pe.RoBInst.store_next2commit(self)
         yield from self.data_cache_pipeline()
 
     def store_disambiguation(self):
         for load in self.pe.ResInst.load_queue:
             if load.older_store is self and load.address:
                 load.ls_ready.set(self.address != load.address)
+
+    def store_release(self):
+        for load in self.pe.ResInst.load_queue:
+            if load.older_store is self:
+                load.older_store = None
+                load.ls_ready.set(True)
 
     def agu_issue(self):
         while not self.psrcs_hit:
@@ -235,8 +246,6 @@ class Instr(sim.Component):
                     "RRE", "AQE", self.pe.thread_id, self.instr_id
                 )
             self.release((self.pe.ResInst.agu_resource, 1))
-        # Back to back issue of stores, It checks if a store is the following instruction in the ROB
-        self.pe.RoBInst.store_next2commit(self)
         self.pe.konata_signature.print_stage(
             "EXE", "LSQ", self.pe.thread_id, self.instr_id
         )
@@ -322,6 +331,9 @@ class Instr(sim.Component):
                 "WUP", "LCK", self.pe.thread_id, self.instr_id
             )
             yield self.wait(self.pe.ResInst.store_state)
+            self.pe.konata_signature.print_stage(
+                "LCK", "QHD", self.pe.thread_id, self.instr_id
+            )
 
     def execution(self):
         self.pe.konata_signature.print_stage(
