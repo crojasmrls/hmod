@@ -160,12 +160,12 @@ class Instr(sim.Component):
 
     def load_queue(self):
         yield from self.dispatch_alloc()
+        yield self.request(self.pe.ResInst.ls_ordering)
         yield self.request(self.pe.ResInst.lq_slots)
         self.release((self.pe.ResInst.alloc_ports, 1))
         self.pe.konata_signature.print_stage(
             "ALL", "AQE", self.pe.thread_id, self.instr_id
         )
-        yield self.request(self.pe.ResInst.ls_ordering)
         self.pe.ResInst.load_queue.append(self)
         if self.pe.ResInst.store_queue:
             self.older_store = self.pe.ResInst.store_queue[-1]
@@ -191,21 +191,26 @@ class Instr(sim.Component):
 
     def store_queue(self):
         yield from self.dispatch_alloc()
+        yield self.request(self.pe.ResInst.ls_ordering)
         yield self.request(self.pe.ResInst.sq_slots)
-        yield self.request(self.pe.ResInst.lq_slots)
+        self.release((self.pe.ResInst.alloc_ports, 1))
         self.pe.konata_signature.print_stage(
             "ALL", "AQE", self.pe.thread_id, self.instr_id
         )
-        yield self.request(self.pe.ResInst.ls_ordering)
         if not self.pe.ResInst.store_queue:
             self.ls_ready.set(True)
         self.pe.ResInst.store_queue.append(self)
         self.release((self.pe.ResInst.ls_ordering, 1))
         yield from self.agu_issue()
         self.store_disambiguation()
+        # Wait data ready
+        yield self.wait(self.p_sources[0].reg_state)
+        # Wait to be in the head of Store Queue
         yield self.wait(self.ls_ready)
+        # Wait to be in commit window
         yield from self.stores_lock()
-        yield self.request(self.pe.ResInst.cache_ports, urgent=True)
+        yield self.request(self.pe.ResInst.cache_ports)
+        yield from self.read_registers()
         self.store_release()
         self.pe.ResInst.store_queue.pop(0)
         if self.pe.ResInst.store_queue:
@@ -252,7 +257,11 @@ class Instr(sim.Component):
                 )
             self.release((self.pe.ResInst.agu_resource, 1))
         self.pe.konata_signature.print_stage(
-            "EXE", "LSQ", self.pe.thread_id, self.instr_id
+            "RRE", "AGU", self.pe.thread_id, self.instr_id
+        )
+        yield self.hold(1)
+        self.pe.konata_signature.print_stage(
+            "AGU", "LSQ", self.pe.thread_id, self.instr_id
         )
 
     def check_psrcs_hit(self):

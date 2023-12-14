@@ -10,7 +10,7 @@ class PipelineParams:
     rob_entries = 128
     int_queue_slots = 32
     lsb_slots = 32
-    OoO_lsu = False
+    OoO_lsu = True
     load_queue_slots = 16
     store_queue_slots = 16
     store_buffer_slots = 32
