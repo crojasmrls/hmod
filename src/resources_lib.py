@@ -37,9 +37,7 @@ class Resources:
         self.dispatch_ports = sim.Resource(
             "dispatch_ports", capacity=self.params.fetch_width
         )
-        self.int_alloc_ports = sim.Resource(
-            "int_alloc_ports", capacity=self.params.fetch_width
-        )
+        self.alloc_ports = sim.Resource("alloc_ports", capacity=self.params.fetch_width)
         self.cache_ports = sim.Resource("cache_ports", capacity=1)
         self.mshrs = sim.Resource("mshrs", capacity=self.params.dcache_mshrs)
         self.store_state = sim.State("store_state", value=True)

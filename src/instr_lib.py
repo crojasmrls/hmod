@@ -53,6 +53,7 @@ class Instr(sim.Component):
                 yield from self.ls_buffer()
         else:
             yield from self.dispatch_alloc()
+            self.release((self.pe.ResInst.alloc_ports, 1))
             yield from self.read_registers()
             # Back to back issue of stores, It checks if a store is the following instruction in the ROB
             self.pe.RoBInst.store_next2commit(self)
@@ -102,8 +103,9 @@ class Instr(sim.Component):
         yield self.hold(1)  # Hold for renaming stage
 
     def arith_queue(self):
-        yield self.request(self.pe.ResInst.int_queue)
         yield from self.dispatch_alloc()
+        yield self.request(self.pe.ResInst.int_queue)
+        self.release((self.pe.ResInst.alloc_ports, 1))
         self.pe.konata_signature.print_stage(
             "ALL", "QUE", self.pe.thread_id, self.instr_id
         )
@@ -125,8 +127,9 @@ class Instr(sim.Component):
         yield from self.execution()
 
     def ls_buffer(self):
-        yield self.request(self.pe.ResInst.lsb_slots)
         yield from self.dispatch_alloc()
+        yield self.request(self.pe.ResInst.lsb_slots)
+        self.release((self.pe.ResInst.alloc_ports, 1))
         self.pe.konata_signature.print_stage(
             "ALL", "LSB", self.pe.thread_id, self.instr_id
         )
@@ -156,8 +159,9 @@ class Instr(sim.Component):
             yield from self.store_queue()
 
     def load_queue(self):
-        yield self.request(self.pe.ResInst.lq_slots)
         yield from self.dispatch_alloc()
+        yield self.request(self.pe.ResInst.lq_slots)
+        self.release((self.pe.ResInst.alloc_ports, 1))
         self.pe.konata_signature.print_stage(
             "ALL", "AQE", self.pe.thread_id, self.instr_id
         )
@@ -186,8 +190,9 @@ class Instr(sim.Component):
                 return True
 
     def store_queue(self):
-        yield self.request(self.pe.ResInst.sq_slots)
         yield from self.dispatch_alloc()
+        yield self.request(self.pe.ResInst.sq_slots)
+        yield self.request(self.pe.ResInst.lq_slots)
         self.pe.konata_signature.print_stage(
             "ALL", "AQE", self.pe.thread_id, self.instr_id
         )
@@ -257,19 +262,18 @@ class Instr(sim.Component):
                 self.psrcs_hit = False
 
     def dispatch_alloc(self):
+        yield self.request(self.pe.ResInst.dispatch_ports)
+        self.release((self.pe.ResInst.rename_ports, 1))
         self.pe.konata_signature.print_stage(
             "RNM", "DIS", self.pe.thread_id, self.instr_id
         )
-        yield self.request(self.pe.ResInst.dispatch_ports)
-        self.release((self.pe.ResInst.rename_ports, 1))
         yield self.hold(1)  # Hold for dispatch stage
-        yield self.request(self.pe.ResInst.int_alloc_ports)
+        yield self.request(self.pe.ResInst.alloc_ports)
+        self.release((self.pe.ResInst.dispatch_ports, 1))
         self.pe.konata_signature.print_stage(
             "DIS", "ALL", self.pe.thread_id, self.instr_id
         )
-        self.release((self.pe.ResInst.dispatch_ports, 1))
         yield self.hold(1)  # Hold for allocation stage
-        self.release((self.pe.ResInst.int_alloc_ports, 1))
 
     def issue_logic(self):
         # Wake-up
