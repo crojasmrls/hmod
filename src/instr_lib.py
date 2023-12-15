@@ -162,6 +162,7 @@ class Instr(sim.Component):
         yield from self.dispatch_alloc()
         yield self.request(self.pe.ResInst.ls_ordering)
         yield self.request(self.pe.ResInst.lq_slots)
+        yield self.request(self.pe.ResInst.int_queue)
         self.release((self.pe.ResInst.alloc_ports, 1))
         self.pe.konata_signature.print_stage(
             "ALL", "AQE", self.pe.thread_id, self.instr_id
@@ -193,6 +194,7 @@ class Instr(sim.Component):
         yield from self.dispatch_alloc()
         yield self.request(self.pe.ResInst.ls_ordering)
         yield self.request(self.pe.ResInst.sq_slots)
+        yield self.request(self.pe.ResInst.int_queue)
         self.release((self.pe.ResInst.alloc_ports, 1))
         self.pe.konata_signature.print_stage(
             "ALL", "AQE", self.pe.thread_id, self.instr_id
@@ -256,6 +258,7 @@ class Instr(sim.Component):
                     "RRE", "AQE", self.pe.thread_id, self.instr_id
                 )
             self.release((self.pe.ResInst.agu_resource, 1))
+        self.release((self.pe.ResInst.int_queue, 1))
         self.pe.konata_signature.print_stage(
             "RRE", "AGU", self.pe.thread_id, self.instr_id
         )
