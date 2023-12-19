@@ -35,7 +35,7 @@ class Instr(sim.Component):
         self.older_store = None
         self.ls_ready = sim.State("ls_ready", value=False)
         # Speculative Issue
-        self.back2back = False
+        self.store_lock = sim.State("store_lock", value=False)
         self.psrcs_hit = False
         self.cache_hit = True
         self.mshr_owner = False
@@ -341,15 +341,15 @@ class Instr(sim.Component):
 
     def stores_lock(self):
         # Store locks until it is the next head of the ROB
-        if self.pe.RoBInst.instr_end(self) and not self.back2back:
-            self.pe.ResInst.store_state.set(False)
-            self.pe.konata_signature.print_stage(
-                "WUP", "LCK", self.pe.thread_id, self.instr_id
-            )
-            yield self.wait(self.pe.ResInst.store_state)
-            self.pe.konata_signature.print_stage(
-                "LCK", "QHD", self.pe.thread_id, self.instr_id
-            )
+        self.pe.konata_signature.print_stage(
+            "WUP", "LCK", self.pe.thread_id, self.instr_id
+        )
+        if self.pe.RoBInst.rob_head(self):
+            self.store_lock.set(True)
+        yield self.wait(self.store_lock)
+        self.pe.konata_signature.print_stage(
+            "LCK", "QHD", self.pe.thread_id, self.instr_id
+        )
 
     def execution(self):
         self.pe.konata_signature.print_stage(
@@ -513,7 +513,7 @@ class Instr(sim.Component):
             "CMP", "ROB", self.pe.thread_id, self.instr_id
         )
         # Pooling to wait rob head
-        while self.pe.RoBInst.instr_end(self):
+        while not self.pe.RoBInst.rob_head(self):
             yield self.hold(1)
 
     def commit(self):

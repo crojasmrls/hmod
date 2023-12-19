@@ -5,8 +5,8 @@ class ReorderBuffer:
     def __init__(self):
         self.rob_list = []
 
-    def instr_end(self, instr):
-        return instr != self.rob_list[0]
+    def rob_head(self, instr):
+        return instr == self.rob_list[0]
 
     def store_next2commit(self, instr):
         try:
@@ -18,8 +18,7 @@ class ReorderBuffer:
                 store.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                 == dec.InstrLabel.STORE
             ):
-                store.back2back = True
-                store.pe.ResInst.store_state.set(True)
+                store.store_lock.set(True)
 
     def store_next(self, reference_instr):
         store_instr = None
