@@ -329,7 +329,10 @@ class Instr(sim.Component):
         )
         # Do computation, all the values are computed in advance
         # the issue latencies are controlled to match the pipeline latencies
-        self.decoded_fields.instr_tuple[dec.INTFields.EXEC](self)
+        try:
+            self.decoded_fields.instr_tuple[dec.INTFields.EXEC](self)
+        except TypeError:
+            print("TypeError on instruction:", self.instr_id)
         # Back to back issue arithmetic of latency 1
         if (
             self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.INT
