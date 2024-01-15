@@ -9,11 +9,11 @@ class PipelineParams:
     branch_units = 1
     rob_entries = 128
     int_queue_slots = 32
-    int_queue_alloc_ports = 2
     lsb_slots = 32
-    load_OoO = False
+    OoO_lsu = True
     load_queue_slots = 16
     store_queue_slots = 16
+    store_buffer_slots = 32
     brob_entries = 16
     branch_in_int_alu = True
     exe_brob_release = True

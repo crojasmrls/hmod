@@ -32,8 +32,10 @@ class Instr(sim.Component):
         self.address = None
         self.address_align = None
         self.data = None
+        self.older_store = None
+        self.ls_ready = sim.State("ls_ready", value=False)
         # Speculative Issue
-        self.back2back = False
+        self.store_lock = sim.State("store_lock", value=False)
         self.psrcs_hit = False
         self.cache_hit = True
         self.mshr_owner = False
@@ -45,10 +47,16 @@ class Instr(sim.Component):
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.ARITH:
             yield from self.arith_queue()
         elif self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.LS:
-            yield from self.ls_buffer()
+            if self.pe.params.OoO_lsu:
+                yield from self.ooo_lsu()
+            else:
+                yield from self.ls_buffer()
         else:
             yield from self.dispatch_alloc()
+            self.release((self.pe.ResInst.alloc_ports, 1))
             yield from self.read_registers()
+            # Back to back issue of stores, It checks if a store is the following instruction in the ROB
+            self.pe.RoBInst.store_next2commit(self)
         yield from self.wait_commit()
         yield from self.commit()
         self.tracer()
@@ -95,8 +103,9 @@ class Instr(sim.Component):
         yield self.hold(1)  # Hold for renaming stage
 
     def arith_queue(self):
-        yield self.request(self.pe.ResInst.int_queue)
         yield from self.dispatch_alloc()
+        yield self.request(self.pe.ResInst.int_queue)
+        self.release((self.pe.ResInst.alloc_ports, 1))
         self.pe.konata_signature.print_stage(
             "ALL", "QUE", self.pe.thread_id, self.instr_id
         )
@@ -113,11 +122,14 @@ class Instr(sim.Component):
                 # Release blocking FU
                 if not self.decoded_fields.instr_tuple[dec.INTFields.PIPELINED]:
                     self.release((self.pe.ResInst.int_units, 1))
+        # Back to back issue of stores, It checks if a store is the following instruction in the ROB
+        self.pe.RoBInst.store_next2commit(self)
         yield from self.execution()
 
     def ls_buffer(self):
-        yield self.request(self.pe.ResInst.lsb_slots)
         yield from self.dispatch_alloc()
+        yield self.request(self.pe.ResInst.lsb_slots)
+        self.release((self.pe.ResInst.alloc_ports, 1))
         self.pe.konata_signature.print_stage(
             "ALL", "LSB", self.pe.thread_id, self.instr_id
         )
@@ -136,7 +148,124 @@ class Instr(sim.Component):
                 self.pe.konata_signature.print_stage(
                     "RRE", "LSB", self.pe.thread_id, self.instr_id
                 )
+        # Back to back issue of stores, It checks if a store is the following instruction in the ROB
+        self.pe.RoBInst.store_next2commit(self)
         yield from self.data_cache_pipeline()
+
+    def ooo_lsu(self):
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD:
+            yield from self.load_queue()
+        else:
+            yield from self.store_queue()
+
+    def load_queue(self):
+        yield from self.dispatch_alloc()
+        yield self.request(self.pe.ResInst.ls_ordering)
+        yield self.request(self.pe.ResInst.lq_slots)
+        yield self.request(self.pe.ResInst.int_queue)
+        self.release((self.pe.ResInst.alloc_ports, 1))
+        self.pe.konata_signature.print_stage(
+            "ALL", "AQE", self.pe.thread_id, self.instr_id
+        )
+        self.pe.ResInst.load_queue.append(self)
+        if self.pe.ResInst.store_queue:
+            self.older_store = self.pe.ResInst.store_queue[-1]
+        self.release((self.pe.ResInst.ls_ordering, 1))
+        yield from self.agu_issue()
+        self.ls_ready.set(self.load_disambiguation())
+        yield self.wait(self.ls_ready)
+        yield self.request(self.pe.ResInst.cache_ports)
+        # Back to back issue of stores, It checks if a store is the following instruction in the ROB
+        self.pe.RoBInst.store_next2commit(self)
+        yield from self.data_cache_pipeline()
+
+    def load_disambiguation(self):
+        if not self.older_store:
+            return True
+        for store in self.pe.ResInst.store_queue:
+            if not store.address:
+                return False
+            if store.address == self.address:
+                return False
+            if store is self.older_store:
+                return True
+
+    def store_queue(self):
+        yield from self.dispatch_alloc()
+        yield self.request(self.pe.ResInst.ls_ordering)
+        yield self.request(self.pe.ResInst.sq_slots)
+        yield self.request(self.pe.ResInst.int_queue)
+        self.release((self.pe.ResInst.alloc_ports, 1))
+        self.pe.konata_signature.print_stage(
+            "ALL", "AQE", self.pe.thread_id, self.instr_id
+        )
+        if not self.pe.ResInst.store_queue:
+            self.ls_ready.set(True)
+        self.pe.ResInst.store_queue.append(self)
+        self.release((self.pe.ResInst.ls_ordering, 1))
+        yield from self.agu_issue()
+        self.store_disambiguation()
+        # Wait data ready
+        yield self.wait(self.p_sources[0].reg_state)
+        # Wait to be in the head of Store Queue
+        yield self.wait(self.ls_ready)
+        # Wait to be in commit window
+        yield from self.stores_lock()
+        yield self.request(self.pe.ResInst.cache_ports)
+        yield from self.read_registers()
+        self.store_release()
+        self.pe.ResInst.store_queue.pop(0)
+        if self.pe.ResInst.store_queue:
+            self.pe.ResInst.store_queue[0].ls_ready.set(True)
+        # Back to back issue of stores, It checks if a store is the following instruction in the ROB
+        self.pe.RoBInst.store_next2commit(self)
+        yield from self.data_cache_pipeline()
+
+    def store_disambiguation(self):
+        for load in self.pe.ResInst.load_queue:
+            if load.older_store is self and load.address:
+                load.ls_ready.set(self.address != load.address)
+
+    def store_release(self):
+        for load in self.pe.ResInst.load_queue:
+            if load.older_store is self:
+                load.older_store = None
+                load.ls_ready.set(True)
+
+    def agu_issue(self):
+        while not self.psrcs_hit:
+            if (
+                self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                is dec.InstrLabel.LOAD
+            ):
+                yield self.wait(self.p_sources[0].reg_state)
+            else:
+                yield self.wait(self.p_sources[1].reg_state)
+            self.pe.konata_signature.print_stage(
+                "QUE", "WUP", self.pe.thread_id, self.instr_id
+            )
+            yield self.request(self.pe.ResInst.agu_resource)
+            yield from self.read_registers()
+            if (
+                self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                is dec.InstrLabel.LOAD
+            ):
+                self.check_psrcs_hit()
+            else:
+                self.psrcs_hit = self.p_sources[1].reg_state.value.value
+            if not self.psrcs_hit:
+                self.pe.konata_signature.print_stage(
+                    "RRE", "AQE", self.pe.thread_id, self.instr_id
+                )
+            self.release((self.pe.ResInst.agu_resource, 1))
+        self.release((self.pe.ResInst.int_queue, 1))
+        self.pe.konata_signature.print_stage(
+            "RRE", "AGU", self.pe.thread_id, self.instr_id
+        )
+        yield self.hold(1)
+        self.pe.konata_signature.print_stage(
+            "AGU", "LSQ", self.pe.thread_id, self.instr_id
+        )
 
     def check_psrcs_hit(self):
         self.psrcs_hit = True
@@ -145,19 +274,18 @@ class Instr(sim.Component):
                 self.psrcs_hit = False
 
     def dispatch_alloc(self):
+        yield self.request(self.pe.ResInst.dispatch_ports)
+        self.release((self.pe.ResInst.rename_ports, 1))
         self.pe.konata_signature.print_stage(
             "RNM", "DIS", self.pe.thread_id, self.instr_id
         )
-        yield self.request(self.pe.ResInst.dispatch_ports)
-        self.release((self.pe.ResInst.rename_ports, 1))
         yield self.hold(1)  # Hold for dispatch stage
-        yield self.request(self.pe.ResInst.int_alloc_ports)
+        yield self.request(self.pe.ResInst.alloc_ports)
+        self.release((self.pe.ResInst.dispatch_ports, 1))
         self.pe.konata_signature.print_stage(
             "DIS", "ALL", self.pe.thread_id, self.instr_id
         )
-        self.release((self.pe.ResInst.dispatch_ports, 1))
         yield self.hold(1)  # Hold for allocation stage
-        self.release((self.pe.ResInst.int_alloc_ports, 1))
 
     def issue_logic(self):
         # Wake-up
@@ -201,7 +329,10 @@ class Instr(sim.Component):
         )
         # Do computation, all the values are computed in advance
         # the issue latencies are controlled to match the pipeline latencies
-        self.decoded_fields.instr_tuple[dec.INTFields.EXEC](self)
+        try:
+            self.decoded_fields.instr_tuple[dec.INTFields.EXEC](self)
+        except TypeError:
+            print("TypeError on instruction:", self.instr_id)
         # Back to back issue arithmetic of latency 1
         if (
             self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.INT
@@ -209,18 +340,19 @@ class Instr(sim.Component):
             and self.decoded_fields.instr_tuple[dec.INTFields.LATENCY] == 1
         ):
             self.p_dest.reg_state.set(True)
-        # Back to back issue of stores, It checks if a store is the following instruction in the ROB
-        self.pe.RoBInst.store_next2commit(self)
         yield self.hold(1)  # Hold for rre stage
 
     def stores_lock(self):
         # Store locks until it is the next head of the ROB
-        if self.pe.RoBInst.instr_end(self) and not self.back2back:
-            self.pe.ResInst.store_state.set(False)
-            self.pe.konata_signature.print_stage(
-                "WUP", "LCK", self.pe.thread_id, self.instr_id
-            )
-            yield self.wait(self.pe.ResInst.store_state)
+        self.pe.konata_signature.print_stage(
+            "WUP", "LCK", self.pe.thread_id, self.instr_id
+        )
+        if self.pe.RoBInst.rob_head(self):
+            self.store_lock.set(True)
+        yield self.wait(self.store_lock)
+        self.pe.konata_signature.print_stage(
+            "LCK", "QHD", self.pe.thread_id, self.instr_id
+        )
 
     def execution(self):
         self.pe.konata_signature.print_stage(
@@ -323,7 +455,10 @@ class Instr(sim.Component):
             latency = mshr_latency
         for x in range(latency):
             # Execute load a wake-up dependencies 2 cycles before finishing load.
-            if x + self.pe.params.issue_to_exe_latency == self.pe.params.cache_hit_latency:
+            if (
+                x + self.pe.params.issue_to_exe_latency
+                == self.pe.params.cache_hit_latency
+            ):
                 if (
                     self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                     is dec.InstrLabel.LOAD
@@ -381,7 +516,7 @@ class Instr(sim.Component):
             "CMP", "ROB", self.pe.thread_id, self.instr_id
         )
         # Pooling to wait rob head
-        while self.pe.RoBInst.instr_end(self):
+        while not self.pe.RoBInst.rob_head(self):
             yield self.hold(1)
 
     def commit(self):
@@ -393,6 +528,9 @@ class Instr(sim.Component):
             dec.Magics.magic_functions(self)
         # Advance Rob head to commit next instruction
         self.pe.RoBInst.release_instr()
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD:
+            if self.pe.ResInst.load_queue:
+                self.pe.ResInst.load_queue.pop(0)
         yield self.request(self.pe.ResInst.commit_ports)
         # Commit
         self.pe.konata_signature.print_stage(
