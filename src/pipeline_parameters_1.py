@@ -2,43 +2,43 @@ import math
 
 
 class PipelineParams:
-    fetch_width = 2
-    commit_width = 2
-    int_alus = 2
-    physical_registers = 128
+    fetch_width = 8
+    commit_width = 8
+    int_alus = 8
+    physical_registers = 256
     branch_units = 1
-    rob_entries = 128
-    int_queue_slots = 32
+    rob_entries = 192
+    int_queue_slots = 64
     lsb_slots = 32
     OoO_lsu = True
-    load_queue_slots = 16
-    store_queue_slots = 16
+    load_queue_slots = 32
+    store_queue_slots = 32
     store_buffer_slots = 32
-    brob_entries = 16
+    brob_entries = 64
     branch_in_int_alu = True
     exe_brob_release = True
     issue_to_exe_latency = 2
     bp_enable = True
     branch_predictor = "bimodal_predictor"
-    bp_entries = 128
+    bp_entries = 2048
     # Data cache parameters
     dcache_mshrs = 4
     # Dcache latencies
     cache_hit_latency = 3
-    l1_dcache_miss_latency = 12
-    l2_dcache_miss_latency = 30
+    l1_dcache_miss_latency = 20
+    l2_dcache_miss_latency = 50
     l3_dcache_miss_latency = 144
     # Dcache dimensions
-    dcache_line_bytes = 16
+    dcache_line_bytes = 64
     # Constant to shift the address to point a single cache line
     mshr_shamt = int(math.log(dcache_line_bytes, 2))
-    # L1 8KB
+    # L1 32KB
     l1_ways = 8
     l1_sets = 64
-    # L2 64KB
+    # L2 256KB
     l2_ways = 8
     l2_sets = 512
-    # L3 5MB
+    # L3 20MB
     l3_ways = 16
     l3_sets = 20480
 
