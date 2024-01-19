@@ -75,6 +75,8 @@ class Instr(sim.Component):
         yield self.request(self.pe.ResInst.rename_ports)
         yield self.request(self.pe.ResInst.rob_resource)
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
+            if self.pe.performance_counters.CountCtrl.is_enable():
+                self.pe.performance_counters.ECInst.increase_counter("decode_branches")
             yield self.request(self.pe.ResInst.brob_resource)
         yield from self.renaming()
 
@@ -359,6 +361,8 @@ class Instr(sim.Component):
             "RRE", "EXE", self.pe.thread_id, self.instr_id
         )
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
+            if self.pe.performance_counters.CountCtrl.is_enable():
+                self.pe.performance_counters.ECInst.increase_counter("exe_branches")
             self.branch_evaluation()
         # Execution stage
         for x in range(self.decoded_fields.instr_tuple[dec.INTFields.LATENCY]):
@@ -453,6 +457,20 @@ class Instr(sim.Component):
         if mshr_latency:
             self.cache_hit = False
             latency = mshr_latency
+        if self.pe.performance_counters.CountCtrl.is_enable():
+            if latency == self.pe.params.l3_dcache_miss_latency:
+                self.pe.performance_counters.ECInst.increase_counter("l3_misses")
+                self.pe.performance_counters.ECInst.increase_counter("l2_misses")
+                self.pe.performance_counters.ECInst.increase_counter("dcache_misses")
+            elif latency == self.pe.params.l2_dcache_miss_latency:
+                self.pe.performance_counters.ECInst.increase_counter("l3_hits")
+                self.pe.performance_counters.ECInst.increase_counter("l2_misses")
+                self.pe.performance_counters.ECInst.increase_counter("dcache_misses")
+            elif latency == self.pe.params.l1_dcache_miss_latency:
+                self.pe.performance_counters.ECInst.increase_counter("l2_hits")
+                self.pe.performance_counters.ECInst.increase_counter("dcache_misses")
+            elif self.cache_hit:
+                self.pe.performance_counters.ECInst.increase_counter("dcache_hits")
         for x in range(latency):
             # Execute load a wake-up dependencies 2 cycles before finishing load.
             if (
@@ -495,9 +513,13 @@ class Instr(sim.Component):
         ):
             self.p_dest.reg_state.set(True)
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE:
+            if self.pe.performance_counters.CountCtrl.is_enable():
+                self.pe.performance_counters.ECInst.increase_counter("exe_stores")
             self.pe.DataCacheInst.dc_store(self.address, self.p_sources[0].value)
 
     def store_to_load_fwd(self):
+        if self.pe.performance_counters.CountCtrl.is_enable():
+            self.pe.performance_counters.ECInst.increase_counter("exe_loads")
         next_store = self.pe.RoBInst.store_next(self)
         # Store to Load forwarding
         if not next_store:
