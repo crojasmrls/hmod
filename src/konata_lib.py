@@ -31,7 +31,7 @@ class KonataSignature(sim.Component):
             if self.konata_dump_on:
                 if self.cycle_count != 0:
                     self.print_cycle()
-                # Thread ID and intruction ID are joint to create a unique ID identifier for the konata signature
+                # Thread ID and instruction ID are joint to create a unique ID identifier for the konata signature
                 self.konata_id_count += 1
                 konata_id = self.konata_id_count
                 try:
