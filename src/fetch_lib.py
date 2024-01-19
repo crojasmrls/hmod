@@ -65,6 +65,10 @@ class FetchUnit(sim.Component):
             # Request fetch width port
             yield self.request(self.pe.ResInst.fetch_resource)
             if len(self.pe.ResInst.miss_branch) != 0:
+                if self.pe.performance_counters.CountCtrl.is_enable():
+                    self.pe.performance_counters.ECInst.increase_counter(
+                        "mispredictions"
+                    )
                 self.flushed = False
                 if self.pe.ResInst.miss_branch.pop(0):
                     branch_target = self.pe.ResInst.branch_target.pop(0)
@@ -93,6 +97,10 @@ class FetchUnit(sim.Component):
                     self.create_instr()
             # Condition to advance to next basic block
             if self.bp_take_branch[0]:
+                if self.pe.performance_counters.CountCtrl.is_enable():
+                    self.pe.performance_counters.ECInst.increase_counter(
+                        "taken_branches"
+                    )
                 self.bb_name = self.bp_take_branch[1]
                 self.offset = 0
             else:
