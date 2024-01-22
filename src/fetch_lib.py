@@ -101,6 +101,7 @@ class FetchUnit(sim.Component):
                     self.pe.performance_counters.ECInst.increase_counter(
                         "taken_branches"
                     )
+                yield self.hold(1)
                 self.bb_name = self.bp_take_branch[1]
                 self.offset = 0
             else:
