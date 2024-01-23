@@ -458,19 +458,7 @@ class Instr(sim.Component):
             self.cache_hit = False
             latency = mshr_latency
         if self.pe.performance_counters.CountCtrl.is_enable():
-            if latency == self.pe.params.l3_dcache_miss_latency:
-                self.pe.performance_counters.ECInst.increase_counter("l3_misses")
-                self.pe.performance_counters.ECInst.increase_counter("l2_misses")
-                self.pe.performance_counters.ECInst.increase_counter("dcache_misses")
-            elif latency == self.pe.params.l2_dcache_miss_latency:
-                self.pe.performance_counters.ECInst.increase_counter("l3_hits")
-                self.pe.performance_counters.ECInst.increase_counter("l2_misses")
-                self.pe.performance_counters.ECInst.increase_counter("dcache_misses")
-            elif latency == self.pe.params.l1_dcache_miss_latency:
-                self.pe.performance_counters.ECInst.increase_counter("l2_hits")
-                self.pe.performance_counters.ECInst.increase_counter("dcache_misses")
-            elif self.cache_hit:
-                self.pe.performance_counters.ECInst.increase_counter("dcache_hits")
+            self.dcache_counters(latency)
         for x in range(latency):
             # Execute load a wake-up dependencies 2 cycles before finishing load.
             if (
@@ -516,6 +504,20 @@ class Instr(sim.Component):
             if self.pe.performance_counters.CountCtrl.is_enable():
                 self.pe.performance_counters.ECInst.increase_counter("exe_stores")
             self.pe.DataCacheInst.dc_store(self.address, self.p_sources[0].value)
+
+    def dcache_counters(self, latency):
+        if self.cache_hit:
+            self.pe.performance_counters.ECInst.increase_counter("dcache_hits")
+        else:
+            self.pe.performance_counters.ECInst.increase_counter("dcache_misses")
+        if latency == self.pe.params.l3_dcache_miss_latency and self.mshr_owner:
+            self.pe.performance_counters.ECInst.increase_counter("l3_misses")
+            self.pe.performance_counters.ECInst.increase_counter("l2_misses")
+        elif latency == self.pe.params.l2_dcache_miss_latency and self.mshr_owner:
+            self.pe.performance_counters.ECInst.increase_counter("l3_hits")
+            self.pe.performance_counters.ECInst.increase_counter("l2_misses")
+        elif latency == self.pe.params.l1_dcache_miss_latency and self.mshr_owner:
+            self.pe.performance_counters.ECInst.increase_counter("l2_hits")
 
     def store_to_load_fwd(self):
         if self.pe.performance_counters.CountCtrl.is_enable():
