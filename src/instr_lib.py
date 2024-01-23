@@ -458,16 +458,17 @@ class Instr(sim.Component):
             self.cache_hit = False
             latency = mshr_latency
         if self.pe.performance_counters.CountCtrl.is_enable():
-            if latency == self.pe.params.l3_dcache_miss_latency:
+            if latency == self.pe.params.l3_dcache_miss_latency and self.mshr_owner:
                 self.pe.performance_counters.ECInst.increase_counter("l3_misses")
                 self.pe.performance_counters.ECInst.increase_counter("l2_misses")
                 self.pe.performance_counters.ECInst.increase_counter("dcache_misses")
-            elif latency == self.pe.params.l2_dcache_miss_latency:
+            elif latency == self.pe.params.l2_dcache_miss_latency and self.mshr_owner:
                 self.pe.performance_counters.ECInst.increase_counter("l3_hits")
                 self.pe.performance_counters.ECInst.increase_counter("l2_misses")
                 self.pe.performance_counters.ECInst.increase_counter("dcache_misses")
             elif latency == self.pe.params.l1_dcache_miss_latency:
-                self.pe.performance_counters.ECInst.increase_counter("l2_hits")
+                if self.mshr_owner:
+                    self.pe.performance_counters.ECInst.increase_counter("l2_hits")
                 self.pe.performance_counters.ECInst.increase_counter("dcache_misses")
             elif self.cache_hit:
                 self.pe.performance_counters.ECInst.increase_counter("dcache_hits")
