@@ -64,7 +64,7 @@ class FetchUnit(sim.Component):
         while self.bb_name != "END" or self.pe.RoBInst.rob_list:
             # Request fetch width port
             yield self.request(self.pe.ResInst.fetch_resource)
-            if len(self.pe.ResInst.miss_branch) != 0:
+            if self.pe.ResInst.miss_branch:
                 if self.pe.performance_counters.CountCtrl.is_enable():
                     self.pe.performance_counters.ECInst.increase_counter(
                         "mispredictions"
@@ -86,7 +86,7 @@ class FetchUnit(sim.Component):
                     self.pe.ResInst.branch_target.pop(0)
                 yield self.hold(3)
             # If fetch process reach end of file passivate it
-            if self.bb_name == "END":
+            if self.bb_name == "END" and not self.pe.ResInst.miss_branch:
                 self.pe.ResInst.finished = True
                 yield self.passivate()
             else:
