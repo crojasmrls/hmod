@@ -4,7 +4,7 @@ import math
 class PipelineParams:
     fetch_width = 8
     commit_width = 8
-    int_alus = 8
+    int_alus = 6
     physical_registers = 256
     branch_units = 1
     rob_entries = 192
@@ -17,7 +17,7 @@ class PipelineParams:
     brob_entries = 64
     branch_in_int_alu = True
     exe_brob_release = True
-    issue_to_exe_latency = 2
+    issue_to_exe_latency = 1
     bp_enable = True
     branch_predictor = "bimodal_predictor"
     bp_entries = 2048

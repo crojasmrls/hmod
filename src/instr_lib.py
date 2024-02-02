@@ -278,16 +278,16 @@ class Instr(sim.Component):
     def dispatch_alloc(self):
         yield self.request(self.pe.ResInst.dispatch_ports)
         self.release((self.pe.ResInst.rename_ports, 1))
-        self.pe.konata_signature.print_stage(
-            "RNM", "DIS", self.pe.thread_id, self.instr_id
-        )
+        # self.pe.konata_signature.print_stage(
+        #    "RNM", "RNM", self.pe.thread_id, self.instr_id
+        # )
         yield self.hold(1)  # Hold for dispatch stage
         yield self.request(self.pe.ResInst.alloc_ports)
         self.release((self.pe.ResInst.dispatch_ports, 1))
         self.pe.konata_signature.print_stage(
             "DIS", "ALL", self.pe.thread_id, self.instr_id
         )
-        yield self.hold(1)  # Hold for allocation stage
+        yield self.hold(0)  # Hold for allocation stage
 
     def issue_logic(self):
         # Wake-up
@@ -342,7 +342,7 @@ class Instr(sim.Component):
             and self.decoded_fields.instr_tuple[dec.INTFields.LATENCY] == 1
         ):
             self.p_dest.reg_state.set(True)
-        yield self.hold(1)  # Hold for rre stage
+        yield self.hold(0)  # Hold for rre stage
 
     def stores_lock(self):
         # Store locks until it is the next head of the ROB
@@ -435,7 +435,7 @@ class Instr(sim.Component):
         self.pe.konata_signature.print_stage(
             "RRE", "MEM", self.pe.thread_id, self.instr_id
         )
-        self.release((self.pe.ResInst.cache_ports, 1))
+
         self.address_align = (
             self.address >> self.pe.params.mshr_shamt
         ) << self.pe.params.mshr_shamt
@@ -460,6 +460,8 @@ class Instr(sim.Component):
         if self.pe.performance_counters.CountCtrl.is_enable():
             self.dcache_counters(latency)
         for x in range(latency):
+            if x == 1:
+                self.release((self.pe.ResInst.cache_ports, 1))
             # Execute load a wake-up dependencies 2 cycles before finishing load.
             if (
                 x + self.pe.params.issue_to_exe_latency
@@ -472,7 +474,7 @@ class Instr(sim.Component):
                     self.store_to_load_fwd()
                     if self.pe.params.speculate_on_load:
                         self.p_dest.reg_state.set(True)
-            elif x == self.pe.params.cache_hit_latency - 1:
+            if x == self.pe.params.cache_hit_latency - 1:
                 if (
                     self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                     is dec.InstrLabel.LOAD
@@ -536,9 +538,9 @@ class Instr(sim.Component):
             "EXE", "CMP", self.pe.thread_id, self.instr_id
         )
         yield self.hold(1)  # # Hold for cmp stage
-        self.pe.konata_signature.print_stage(
-            "CMP", "ROB", self.pe.thread_id, self.instr_id
-        )
+        # self.pe.konata_signature.print_stage(
+        #    "CMP", "ROB", self.pe.thread_id, self.instr_id
+        # )
         # Pooling to wait rob head
         while not self.pe.RoBInst.rob_head(self):
             yield self.hold(1)
@@ -560,7 +562,7 @@ class Instr(sim.Component):
         self.pe.konata_signature.print_stage(
             "ROB", "COM", self.pe.thread_id, self.instr_id
         )
-        yield self.hold(1)
+        yield self.hold(0)
 
     def tracer(self):
         # Counters increment
