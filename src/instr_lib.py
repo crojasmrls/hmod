@@ -389,21 +389,21 @@ class Instr(sim.Component):
             and self.decoded_fields.branch_target == self.bp_take_branch[1]
         )
         if not self.bp_hit:
-            self.pe.ResInst.miss_branch = [True]
+            self.pe.ResInst.miss_branch.append(True)
             self.fetch_unit.flushed = True
             if self.branch_result:
                 if (
                     self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                     is dec.InstrLabel.JALR
                 ):
-                    self.pe.ResInst.branch_target = [(self.p_sources[0].value, 0)]
+                    self.pe.ResInst.branch_target.append((self.p_sources[0].value, 0))
                     self.decoded_fields.branch_target = self.p_sources[0].value
                 else:
-                    self.pe.ResInst.branch_target = [
+                    self.pe.ResInst.branch_target.append(
                         (self.decoded_fields.branch_target, 0)
-                    ]
+                    )
             else:
-                self.pe.ResInst.branch_target = [(self.bb_name, self.offset + 1)]
+                self.pe.ResInst.branch_target.append((self.bb_name, self.offset + 1))
             self.recovery()
 
     def recovery(self):
@@ -435,7 +435,8 @@ class Instr(sim.Component):
         self.pe.konata_signature.print_stage(
             "RRE", "MEM", self.pe.thread_id, self.instr_id
         )
-
+        if self.pe.params.issue_to_exe_latency > 1:
+            self.release((self.pe.ResInst.cache_ports, 1))
         self.address_align = (
             self.address >> self.pe.params.mshr_shamt
         ) << self.pe.params.mshr_shamt
@@ -460,7 +461,7 @@ class Instr(sim.Component):
         if self.pe.performance_counters.CountCtrl.is_enable():
             self.dcache_counters(latency)
         for x in range(latency):
-            if x == 1:
+            if x == 1 and self.pe.params.issue_to_exe_latency == 1:
                 self.release((self.pe.ResInst.cache_ports, 1))
             # Execute load a wake-up dependencies 2 cycles before finishing load.
             if (
@@ -562,7 +563,7 @@ class Instr(sim.Component):
         self.pe.konata_signature.print_stage(
             "ROB", "COM", self.pe.thread_id, self.instr_id
         )
-        yield self.hold(0)
+        yield self.hold(0)  # Commit cycle
 
     def tracer(self):
         # Counters increment
