@@ -109,9 +109,9 @@ class Instr(sim.Component):
         yield from self.dispatch_alloc()
         yield self.request(self.pe.ResInst.int_queue)
         self.release((self.pe.ResInst.alloc_ports, 1))
-        self.pe.konata_signature.print_stage(
-            "ALL", "QUE", self.pe.thread_id, self.instr_id
-        )
+        # self.pe.konata_signature.print_stage(
+        #    "ALL", "QUE", self.pe.thread_id, self.instr_id
+        # )
         while not self.psrcs_hit:
             yield from self.issue_logic()
             yield from self.fu_request()
@@ -120,7 +120,7 @@ class Instr(sim.Component):
             self.check_psrcs_hit()
             if not self.psrcs_hit:
                 self.pe.konata_signature.print_stage(
-                    "RRE", "QUE", self.pe.thread_id, self.instr_id
+                    "RRE", "DIS", self.pe.thread_id, self.instr_id
                 )
                 # Release blocking FU
                 if not self.decoded_fields.instr_tuple[dec.INTFields.PIPELINED]:
@@ -168,7 +168,7 @@ class Instr(sim.Component):
         yield self.request(self.pe.ResInst.int_queue)
         self.release((self.pe.ResInst.alloc_ports, 1))
         self.pe.konata_signature.print_stage(
-            "ALL", "AQE", self.pe.thread_id, self.instr_id
+            "RNM", "DIS", self.pe.thread_id, self.instr_id
         )
         self.pe.ResInst.load_queue.append(self)
         if self.pe.ResInst.store_queue:
@@ -178,6 +178,11 @@ class Instr(sim.Component):
         self.ls_ready.set(self.load_disambiguation())
         yield self.wait(self.ls_ready)
         yield self.request(self.pe.ResInst.cache_ports)
+        self.pe.konata_signature.print_stage(
+            "DIS", "ISS", self.pe.thread_id, self.instr_id
+        )
+        yield self.hold(1)  # Issue of LSU latency
+        self.release((self.pe.ResInst.cache_ports, 1))
         # Back to back issue of stores, It checks if a store is the following instruction in the ROB
         self.pe.RoBInst.store_next2commit(self)
         yield from self.data_cache_pipeline()
@@ -201,7 +206,7 @@ class Instr(sim.Component):
         yield self.request(self.pe.ResInst.int_queue)
         self.release((self.pe.ResInst.alloc_ports, 1))
         self.pe.konata_signature.print_stage(
-            "ALL", "AQE", self.pe.thread_id, self.instr_id
+            "RNM", "DIS", self.pe.thread_id, self.instr_id
         )
         if not self.pe.ResInst.store_queue:
             self.ls_ready.set(True)
@@ -216,7 +221,11 @@ class Instr(sim.Component):
         # Wait to be in commit window
         yield from self.stores_lock()
         yield self.request(self.pe.ResInst.cache_ports)
-        yield from self.read_registers()
+        self.pe.konata_signature.print_stage(
+            "DIS", "ISS", self.pe.thread_id, self.instr_id
+        )
+        yield self.hold(1)  # Issue of LSU latency
+        self.release((self.pe.ResInst.cache_ports, 1))
         self.pe.ResInst.store_queue.pop(0)
         if self.pe.ResInst.store_queue:
             self.pe.ResInst.store_queue[0].ls_ready.set(True)
@@ -266,16 +275,16 @@ class Instr(sim.Component):
                 self.psrcs_hit = self.p_sources[1].reg_state.value.value
             if not self.psrcs_hit:
                 self.pe.konata_signature.print_stage(
-                    "RRE", "AQE", self.pe.thread_id, self.instr_id
+                    "RRE", "DIS", self.pe.thread_id, self.instr_id
                 )
             self.release((self.pe.ResInst.agu_resource, 1))
         self.release((self.pe.ResInst.int_queue, 1))
         self.pe.konata_signature.print_stage(
             "RRE", "AGU", self.pe.thread_id, self.instr_id
         )
-        yield self.hold(1)
+        # yield self.hold(1)
         self.pe.konata_signature.print_stage(
-            "AGU", "LSQ", self.pe.thread_id, self.instr_id
+            "AGU", "DIS", self.pe.thread_id, self.instr_id
         )
 
     def check_psrcs_hit(self):
@@ -294,7 +303,7 @@ class Instr(sim.Component):
         yield self.request(self.pe.ResInst.alloc_ports)
         self.release((self.pe.ResInst.dispatch_ports, 1))
         self.pe.konata_signature.print_stage(
-            "DIS", "ALL", self.pe.thread_id, self.instr_id
+            "RNM", "DIS", self.pe.thread_id, self.instr_id
         )
         yield self.hold(0)  # Hold for allocation stage
 
@@ -444,7 +453,7 @@ class Instr(sim.Component):
         self.pe.konata_signature.print_stage(
             "RRE", "MEM", self.pe.thread_id, self.instr_id
         )
-        if self.pe.params.issue_to_exe_latency > 1:
+        if self.pe.params.issue_to_exe_latency > 1 and not self.pe.params.OoO_lsu:
             self.release((self.pe.ResInst.cache_ports, 1))
         self.address_align = (
             self.address >> self.pe.params.mshr_shamt
@@ -470,7 +479,11 @@ class Instr(sim.Component):
         if self.pe.performance_counters.CountCtrl.is_enable():
             self.dcache_counters(latency)
         for x in range(latency):
-            if x == 1 and self.pe.params.issue_to_exe_latency == 1:
+            if (
+                x == 1
+                and self.pe.params.issue_to_exe_latency == 1
+                and not self.pe.params.OoO_lsu
+            ):
                 self.release((self.pe.ResInst.cache_ports, 1))
             # Execute load a wake-up dependencies 2 cycles before finishing load.
             if (
