@@ -40,6 +40,8 @@ class Instr(sim.Component):
         self.psrcs_hit = False
         self.cache_hit = True
         self.mshr_owner = False
+        # Commit head ready
+        self.commit_head = sim.State("commit_head", value=False)
         # Event Trace
         self.instr_id = instr_id
 
@@ -560,13 +562,14 @@ class Instr(sim.Component):
         self.pe.konata_signature.print_stage(
             "EXE", "CMP", self.pe.thread_id, self.instr_id
         )
-        yield self.hold(1)  # # Hold for cmp stage
+        yield self.hold(0)  # # Hold for cmp stage
         # self.pe.konata_signature.print_stage(
         #    "CMP", "ROB", self.pe.thread_id, self.instr_id
         # )
         # Pooling to wait rob head
-        while not self.pe.RoBInst.rob_head(self):
-            yield self.hold(1)
+        if self.pe.RoBInst.rob_head(self):
+            self.commit_head.set(True)
+        yield self.wait(self.commit_head)
 
     def commit(self):
         # check if a store is the following instruction in the ROB after a flush
@@ -585,7 +588,7 @@ class Instr(sim.Component):
         self.pe.konata_signature.print_stage(
             "ROB", "COM", self.pe.thread_id, self.instr_id
         )
-        yield self.hold(0)  # Commit cycle
+        yield self.hold(1)  # Commit cycle
 
     def tracer(self):
         # Counters increment
