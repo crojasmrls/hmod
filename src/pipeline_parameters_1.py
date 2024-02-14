@@ -22,6 +22,7 @@ class PipelineParams:
     branch_predictor = "bimodal_predictor"
     bp_entries = 2048
     # Data cache parameters
+    dcache_ports = 4
     dcache_mshrs = 4
     # Dcache latencies
     cache_hit_latency = 3
