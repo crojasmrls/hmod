@@ -6,7 +6,7 @@ class PipelineParams:
     commit_width = 8
     int_alus = 6
     physical_registers = 256
-    branch_units = 1
+    branch_units = 2
     rob_entries = 192
     int_queue_slots = 64
     lsb_slots = 32
@@ -25,7 +25,8 @@ class PipelineParams:
     dcache_ports = 4
     dcache_mshrs = 4
     # Dcache latencies
-    cache_hit_latency = 3
+    dcache_load_hit_latency = 3
+    dcache_store_hit_latency = 1
     l1_dcache_miss_latency = 20
     l2_dcache_miss_latency = 50
     l3_dcache_miss_latency = 144

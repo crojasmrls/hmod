@@ -51,14 +51,17 @@ class DataCache:
 
     def load_latency(self, addr, length):
         self.mem_sim.load(addr, length=length)
-        return self.get_latency()
+        return self.get_latency(True)
 
     def store_latency(self, addr, length):
         self.mem_sim.store(addr, length=length)
-        return self.get_latency()
+        return self.get_latency(False)
 
-    def get_latency(self):
-        latency = self.params.cache_hit_latency
+    def get_latency(self, is_load):
+        if is_load:
+            latency = self.params.dcache_load_hit_latency
+        else:
+            latency = self.params.dcache_store_hit_latency
         miss_count = self.l1.backend.MISS_count
         if miss_count != self.miss_count[0]:
             latency = self.params.l1_dcache_miss_latency

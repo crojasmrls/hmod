@@ -470,7 +470,10 @@ class Instr(sim.Component):
                 self.address_align,
                 self.decoded_fields.instr_tuple[dec.INTFields.N_BYTES],
             )
-        self.cache_hit = latency == self.pe.params.cache_hit_latency
+        self.cache_hit = (
+            latency == self.pe.params.dcache_load_hit_latency
+            or latency == self.pe.params.dcache_store_hit_latency
+        )
         if not self.cache_hit:
             self.pe.DataCacheInst.mshrs[self.address_align] = latency
             self.mshr_owner = True
@@ -487,25 +490,24 @@ class Instr(sim.Component):
                 and not self.pe.params.OoO_lsu
             ):
                 self.release((self.pe.ResInst.cache_ports, 1))
-            # Execute load a wake-up dependencies 2 cycles before finishing load.
             if (
-                x + self.pe.params.issue_to_exe_latency
-                == self.pe.params.cache_hit_latency
+                self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                is dec.InstrLabel.LOAD
             ):
+                # Execute load a wake-up dependencies 2 cycles before finishing load.
                 if (
-                    self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
-                    is dec.InstrLabel.LOAD
+                    x + self.pe.params.issue_to_exe_latency
+                    == self.pe.params.dcache_load_hit_latency
                 ):
                     self.store_to_load_fwd()
                     if self.pe.params.speculate_on_load:
                         self.p_dest.reg_state.set(True)
-            if x == self.pe.params.cache_hit_latency - 1:
-                if (
-                    self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
-                    is dec.InstrLabel.LOAD
-                ):
+                if x == self.pe.params.dcache_load_hit_latency - 1:
                     self.p_dest.reg_state.set(self.cache_hit)
-                if self.cache_hit:
+                    if self.cache_hit:
+                        self.release((self.pe.ResInst.mshrs, 1))
+            else:
+                if x == self.pe.params.dcache_store_hit_latency - 1 and self.cache_hit:
                     self.release((self.pe.ResInst.mshrs, 1))
             yield self.hold(1)  # Hold for mem stage
         if not self.cache_hit:
