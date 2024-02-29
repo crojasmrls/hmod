@@ -8,9 +8,23 @@ class ReorderBuffer:
     def rob_head(self, instr):
         return instr == self.rob_list[0]
 
-    def store_next2commit(self, instr):
+    # def store_next2commit(self):
+    #     for instr in self.rob_list:
+    #         if (
+    #             instr.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+    #             in dec.InstrLabel.CTRL
+    #             and instr != self.rob_list[0]
+    #         ):
+    #             break
+    #         if (
+    #             instr.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+    #             == dec.InstrLabel.STORE
+    #         ):
+    #             instr.store_lock.set(True)
+
+    def store_next2commit(self):
         try:
-            store = self.rob_list[self.rob_list.index(instr) + 1]
+            store = self.rob_list[1]
         except IndexError:
             pass
         else:
@@ -42,7 +56,6 @@ class ReorderBuffer:
             self.rob_list[0].commit_head.set(True)
         except IndexError:
             pass
-
 
     def recovery_rob(self, recovery_instr):
         head_instr = self.rob_list[-1]
