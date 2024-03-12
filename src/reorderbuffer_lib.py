@@ -8,20 +8,6 @@ class ReorderBuffer:
     def rob_head(self, instr):
         return instr == self.rob_list[0]
 
-    # def store_next2commit(self):
-    #     for instr in self.rob_list:
-    #         if (
-    #             instr.decoded_fields.instr_tuple[dec.INTFields.LABEL]
-    #             in dec.InstrLabel.CTRL
-    #             and instr != self.rob_list[0]
-    #         ):
-    #             break
-    #         if (
-    #             instr.decoded_fields.instr_tuple[dec.INTFields.LABEL]
-    #             == dec.InstrLabel.STORE
-    #         ):
-    #             instr.store_lock.set(True)
-
     def store_next2commit(self):
         try:
             store = self.rob_list[1]

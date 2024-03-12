@@ -14,6 +14,7 @@ class PipelineParams:
     load_queue_slots = 32
     store_queue_slots = 32
     store_buffer_slots = 32
+    store2load_queue_slots = 8
     brob_entries = 64
     branch_in_int_alu = True
     exe_brob_release = True

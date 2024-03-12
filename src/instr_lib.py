@@ -35,6 +35,7 @@ class Instr(sim.Component):
         self.older_store = None
         self.ls_collisions = {}
         self.ls_ready = sim.State("ls_ready", value=False)
+        self.promoted = False
         # Speculative Issue
         self.store_lock = sim.State("store_lock", value=False)
         self.psrcs_hit = False
@@ -173,20 +174,63 @@ class Instr(sim.Component):
         yield from self.agu_issue()
         self.ls_ready.set(self.load_disambiguation())
         yield self.wait(self.ls_ready)
-        yield self.request(self.pe.ResInst.cache_ports)
+        if self.promoted:
+            yield from self.store_to_load_fwd()
+        else:
+            yield self.request(self.pe.ResInst.cache_ports)
+            self.pe.konata_signature.print_stage(
+                "DIS", "ISS", self.pe.thread_id, self.instr_id
+            )
+            yield self.hold(1)  # Issue of LSU latency
+            self.release((self.pe.ResInst.cache_ports, 1))
+            yield from self.data_cache_pipeline()
+
+    def store_to_load_fwd(self):
+        self.psrcs_hit = False
+        self.request(self.pe.ResInst.s2l_slots)
+        while not self.psrcs_hit:
+            try:
+                yield self.wait(self.p_sources[0].reg_state)
+            except AttributeError:
+                print(self.instr_id)
+                raise
+            self.pe.konata_signature.print_stage(
+                "QUE", "WUP", self.pe.thread_id, self.instr_id
+            )
+            yield self.request(self.pe.ResInst.cache_ports)
+            yield self.hold(1)  # Issue cycle
+            self.p_dest.value = self.p_sources[0].value
+            self.p_dest.reg_state.set(True)
+            yield from self.read_registers()
+            self.check_psrcs_hit()
+            if not self.psrcs_hit:
+                self.pe.konata_signature.print_stage(
+                    "RRE", "FWD", self.pe.thread_id, self.instr_id
+                )
+                self.release((self.pe.ResInst.cache_ports, 1))
         self.pe.konata_signature.print_stage(
-            "DIS", "ISS", self.pe.thread_id, self.instr_id
+            "RRE", "FWD", self.pe.thread_id, self.instr_id
         )
-        yield self.hold(1)  # Issue of LSU latency
+        yield self.hold(1)
+        self.release((self.pe.ResInst.s2l_slots, 1))
         self.release((self.pe.ResInst.cache_ports, 1))
-        yield from self.data_cache_pipeline()
+        # yield self.hold(1)
+        self.pe.konata_signature.print_stage(
+            "FWD", "CMP", self.pe.thread_id, self.instr_id
+        )
 
     def load_disambiguation(self):
         if not self.older_store:
             return True
         for store in self.pe.ResInst.store_queue:
-            if not store.address or store.address == self.address:
+            if not store.address:
                 self.ls_collisions[store] = None
+            elif store.address == self.address:
+                if self.pe.ResInst.s2l_slots.available_quantity.value > 0:
+                    self.promoted = True
+                    self.p_sources[0] = store.p_sources[0]
+                else:
+                    self.ls_collisions[store] = None
             if store is self.older_store:
                 if self.ls_collisions:
                     return False
@@ -232,6 +276,11 @@ class Instr(sim.Component):
             if self in load.ls_collisions and load.address:
                 if self.address != load.address:
                     del load.ls_collisions[self]
+                else:
+                    if self.pe.ResInst.s2l_slots.available_quantity.value > 0:
+                        del load.ls_collisions[self]
+                        load.promoted = True
+                        load.p_sources[0] = self.p_sources[0]
             if not load.ls_collisions:
                 load.ls_ready.set(True)
 
@@ -350,6 +399,7 @@ class Instr(sim.Component):
             self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.INT
             and self.decoded_fields.instr_tuple[dec.INTFields.DEST]
             and self.decoded_fields.instr_tuple[dec.INTFields.LATENCY] == 1
+            or self.promoted
         ):
             self.p_dest.reg_state.set(True)
         yield self.hold(0)  # Hold for rre stage
@@ -450,7 +500,7 @@ class Instr(sim.Component):
             self.address >> self.pe.params.mshr_shamt
         ) << self.pe.params.mshr_shamt
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD:
-            self.store_to_load_fwd()
+            self.cache_store_to_load_fwd()
             latency = self.pe.DataCacheInst.load_latency(
                 self.address_align,
                 self.decoded_fields.instr_tuple[dec.INTFields.N_BYTES],
@@ -501,7 +551,7 @@ class Instr(sim.Component):
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                 is dec.InstrLabel.LOAD
             ):
-                self.store_to_load_fwd()
+                self.cache_store_to_load_fwd()
                 self.p_dest.reg_state.set(True)
             self.release((self.pe.ResInst.mshrs, 1))
             self.cache_hit = True
@@ -535,7 +585,7 @@ class Instr(sim.Component):
         elif latency == self.pe.params.l1_dcache_miss_latency and self.mshr_owner:
             self.pe.performance_counters.ECInst.increase_counter("l2_hits")
 
-    def store_to_load_fwd(self):
+    def cache_store_to_load_fwd(self):
         if self.pe.performance_counters.CountCtrl.is_enable():
             self.pe.performance_counters.ECInst.increase_counter("exe_loads")
         next_store = self.pe.RoBInst.store_next(self)
