@@ -190,7 +190,7 @@ class Instr(sim.Component):
         self.request(self.pe.ResInst.s2l_slots)
         while not self.psrcs_hit:
             try:
-                yield self.wait(self.p_sources[0].reg_state)
+                yield self.wait(self.p_sources[1].reg_state)
             except AttributeError:
                 print(self.instr_id)
                 raise
@@ -199,7 +199,7 @@ class Instr(sim.Component):
             )
             yield self.request(self.pe.ResInst.cache_ports)
             yield self.hold(1)  # Issue cycle
-            self.p_dest.value = self.p_sources[0].value
+            self.p_dest.value = self.p_sources[1].value
             self.p_dest.reg_state.set(True)
             yield from self.read_registers()
             self.check_psrcs_hit()
@@ -228,7 +228,7 @@ class Instr(sim.Component):
             elif store.address == self.address:
                 if self.pe.ResInst.s2l_slots.available_quantity.value > 0:
                     self.promoted = True
-                    self.p_sources[0] = store.p_sources[0]
+                    self.p_sources.append(store.p_sources[0])
                 else:
                     self.ls_collisions[store] = None
             if store is self.older_store:
@@ -280,7 +280,7 @@ class Instr(sim.Component):
                     if self.pe.ResInst.s2l_slots.available_quantity.value > 0:
                         del load.ls_collisions[self]
                         load.promoted = True
-                        load.p_sources[0] = self.p_sources[0]
+                        load.p_sources.append(self.p_sources[0])
             if not load.ls_collisions:
                 load.ls_ready.set(True)
 
