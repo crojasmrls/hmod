@@ -27,7 +27,7 @@ class PipelineParams:
     dcache_mshrs = 4
     # Dcache latencies
     dcache_load_hit_latency = 3
-    dcache_store_hit_latency = 1
+    dcache_store_hit_latency = 3
     l1_dcache_miss_latency = 20
     l2_dcache_miss_latency = 50
     l3_dcache_miss_latency = 144
