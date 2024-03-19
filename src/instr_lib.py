@@ -196,12 +196,15 @@ class Instr(sim.Component):
         while not self.psrcs_hit:
             yield self.wait(self.store_fwd.p_sources[0].reg_state)
             self.pe.konata_signature.print_stage(
-                "QUE", "WUP", self.pe.thread_id, self.instr_id
+                "DIS", "WUP", self.pe.thread_id, self.instr_id
             )
             if not self.store_fwd.store_buff:
                 # Request read port if data is not in Store Data Buffer
                 yield self.request(self.pe.ResInst.cache_ports)
                 self.cache_port = True
+            self.pe.konata_signature.print_stage(
+                "WUP", "ISS", self.pe.thread_id, self.instr_id
+            )
             yield self.hold(1)  # Issue cycle
             # Request write port only if read port has not been requested
             if not self.cache_port:
@@ -213,7 +216,7 @@ class Instr(sim.Component):
             self.check_psrcs_hit()
             if not self.psrcs_hit:
                 self.pe.konata_signature.print_stage(
-                    "RRE", "FWD", self.pe.thread_id, self.instr_id
+                    "FWD", "DIS", self.pe.thread_id, self.instr_id
                 )
                 self.release((self.pe.ResInst.cache_ports, 1))
                 self.store_fwd.store_buff = False
@@ -223,10 +226,10 @@ class Instr(sim.Component):
         yield self.hold(1)
         self.release((self.pe.ResInst.s2l_slots, 1))
         self.release((self.pe.ResInst.cache_ports, 1))
-        # yield self.hold(1)
         self.pe.konata_signature.print_stage(
             "FWD", "CMP", self.pe.thread_id, self.instr_id
         )
+        yield self.hold(1)
 
     def load_disambiguation(self):
         if not self.older_store:
@@ -266,15 +269,13 @@ class Instr(sim.Component):
         )
         # Wait to be in commit window
         yield from self.wait_commit()
+        self.release((self.pe.ResInst.commit_ports, 1))
         self.pe.konata_signature.print_stage(
             "CMP", "SBU", self.pe.thread_id, self.instr_id
         )
-        # yield from self.stores_lock()
-        self.release((self.pe.ResInst.commit_ports, 1))
         if not self.store_buff:
             yield self.request(self.pe.ResInst.cache_ports)
             self.cache_port = True
-        yield self.hold(1)  # Issue of LSU latency
         if self.cache_port:
             self.release((self.pe.ResInst.cache_ports, 1))
         self.store_buff = True
@@ -614,7 +615,11 @@ class Instr(sim.Component):
         self.pe.konata_signature.print_stage(
             "EXE", "CMP", self.pe.thread_id, self.instr_id
         )
-        yield self.hold(0)  # # Hold for cmp stage
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE:
+            yield self.hold(1)  # Issue of LSU latency
+            self.pe.konata_signature.print_stage(
+                "DIS", "ISS", self.pe.thread_id, self.instr_id
+            )
         # self.pe.konata_signature.print_stage(
         #    "CMP", "ROB", self.pe.thread_id, self.instr_id
         # )
@@ -623,6 +628,11 @@ class Instr(sim.Component):
         if self.pe.RoBInst.rob_head(self):
             self.commit_head.set(True)
         yield self.wait(self.commit_head)
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE:
+            self.pe.konata_signature.print_stage(
+                "ISS", "CMP", self.pe.thread_id, self.instr_id
+            )
+            yield self.hold(1)  # Hold for cmp stage
         yield from self.commit()
         self.tracer()
 
