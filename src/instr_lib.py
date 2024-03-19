@@ -265,8 +265,13 @@ class Instr(sim.Component):
         # Wait data ready
         yield self.wait(self.p_sources[0].reg_state)
         self.pe.konata_signature.print_stage(
-            "DIS", "DWU", self.pe.thread_id, self.instr_id
+            "DIS", "ISS", self.pe.thread_id, self.instr_id
         )
+        yield self.hold(1)  # Issue of LSU latency
+        self.pe.konata_signature.print_stage(
+            "ISS", "CMP", self.pe.thread_id, self.instr_id
+        )
+        yield self.hold(1)  # Complete of LSU latency
         # Wait to be in commit window
         yield from self.wait_commit()
         self.release((self.pe.ResInst.commit_ports, 1))
@@ -615,10 +620,7 @@ class Instr(sim.Component):
         self.pe.konata_signature.print_stage(
             "EXE", "CMP", self.pe.thread_id, self.instr_id
         )
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE:
-            self.pe.konata_signature.print_stage(
-                "CMP", "DIS", self.pe.thread_id, self.instr_id
-            )
+        #    yield self.hold(1)  # Hold for cmp stage
         # self.pe.konata_signature.print_stage(
         #    "CMP", "ROB", self.pe.thread_id, self.instr_id
         # )
@@ -630,17 +632,9 @@ class Instr(sim.Component):
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                 is dec.InstrLabel.STORE
             ):
-                self.pe.konata_signature.print_stage(
-                    "DIS", "ISS", self.pe.thread_id, self.instr_id
-                )
-                yield self.hold(1)  # Issue of LSU latency
-                self.pe.RoBInst.issue_next_store()
+                # self.pe.RoBInst.issue_next_store()
+                pass
         yield self.wait(self.commit_head)
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE:
-            self.pe.konata_signature.print_stage(
-                "ISS", "CMP", self.pe.thread_id, self.instr_id
-            )
-            yield self.hold(1)  # Hold for cmp stage
         yield from self.commit()
         self.tracer()
 
