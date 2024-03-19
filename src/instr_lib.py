@@ -265,7 +265,7 @@ class Instr(sim.Component):
         # Wait data ready
         yield self.wait(self.p_sources[0].reg_state)
         self.pe.konata_signature.print_stage(
-            "DIP", "DWU", self.pe.thread_id, self.instr_id
+            "DIS", "DWU", self.pe.thread_id, self.instr_id
         )
         # Wait to be in commit window
         yield from self.wait_commit()
@@ -616,9 +616,8 @@ class Instr(sim.Component):
             "EXE", "CMP", self.pe.thread_id, self.instr_id
         )
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE:
-            yield self.hold(1)  # Issue of LSU latency
             self.pe.konata_signature.print_stage(
-                "DIS", "ISS", self.pe.thread_id, self.instr_id
+                "CMP", "DIS", self.pe.thread_id, self.instr_id
             )
         # self.pe.konata_signature.print_stage(
         #    "CMP", "ROB", self.pe.thread_id, self.instr_id
@@ -627,6 +626,15 @@ class Instr(sim.Component):
         self.pe.RoBInst.store_next2commit()
         if self.pe.RoBInst.rob_head(self):
             self.commit_head.set(True)
+            if (
+                self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                is dec.InstrLabel.STORE
+            ):
+                self.pe.konata_signature.print_stage(
+                    "DIS", "ISS", self.pe.thread_id, self.instr_id
+                )
+                yield self.hold(1)  # Issue of LSU latency
+                self.pe.RoBInst.issue_next_store()
         yield self.wait(self.commit_head)
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE:
             self.pe.konata_signature.print_stage(
