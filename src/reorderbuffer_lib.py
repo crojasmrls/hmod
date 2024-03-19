@@ -20,20 +20,6 @@ class ReorderBuffer:
             ):
                 store.store_lock.set(True)
 
-    def issue_next_store(self):
-        try:
-            store = self.rob_list[1]
-        except IndexError:
-            pass
-        else:
-            if (
-                store.decoded_fields.instr_tuple[dec.INTFields.LABEL]
-                == dec.InstrLabel.STORE
-            ):
-                store.pe.konata_signature.print_stage(
-                    "DIS", "ISS", store.pe.thread_id, store.instr_id
-                )
-
     def store_next(self, reference_instr):
         store_instr = None
         for instr in self.rob_list:
