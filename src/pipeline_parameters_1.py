@@ -35,15 +35,15 @@ class PipelineParams:
     dcache_line_bytes = 64
     # Constant to shift the address to point a single cache line
     mshr_shamt = int(math.log(dcache_line_bytes, 2))
-    # L1 32KB
-    l1_ways = 8
-    l1_sets = 64
-    # L2 256KB
+    # L1 64KB
+    l1_ways = 2
+    l1_sets = 512
+    # L2 2MB,
     l2_ways = 8
-    l2_sets = 512
-    # L3 20MB
+    l2_sets = 4096
+    # L3 16MB
     l3_ways = 16
-    l3_sets = 20480
+    l3_sets = 16384
 
     speculate_on_load = True
 
