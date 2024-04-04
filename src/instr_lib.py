@@ -189,6 +189,8 @@ class Instr(sim.Component):
             yield self.hold(1)  # Issue of LSU latency
             self.release((self.pe.ResInst.cache_ports, 1))
             yield from self.data_cache_pipeline()
+        if self.pe.performance_counters.CountCtrl.is_enable():
+            self.pe.performance_counters.ECInst.increase_counter("exe_loads")
 
     def store_to_load_fwd(self):
         self.psrcs_hit = False
@@ -602,8 +604,6 @@ class Instr(sim.Component):
             self.pe.performance_counters.ECInst.increase_counter("l2_hits")
 
     def cache_store_to_load_fwd(self):
-        if self.pe.performance_counters.CountCtrl.is_enable():
-            self.pe.performance_counters.ECInst.increase_counter("exe_loads")
         next_store = self.pe.RoBInst.store_next(self)
         # Store to Load forwarding
         if not next_store:
