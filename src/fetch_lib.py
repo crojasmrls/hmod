@@ -61,10 +61,14 @@ class FetchUnit(sim.Component):
     def process(self):
         # Condition to end fetch process, if the bb_name pointer reach END and the ROB is empty the fetch process
         # is terminated
-        while self.bb_name != "END" or self.pe.RoBInst.rob_list:
+        while (
+            self.bb_name != "END"
+            or self.pe.RoBInst.rob_list
+            or bool(self.pe.ResInst.miss_branch)
+        ):
             # Request fetch width port
             yield self.request(self.pe.ResInst.fetch_resource)
-            if len(self.pe.ResInst.miss_branch) != 0:
+            if self.pe.ResInst.miss_branch:
                 if self.pe.performance_counters.CountCtrl.is_enable():
                     self.pe.performance_counters.ECInst.increase_counter(
                         "mispredictions"
@@ -84,8 +88,9 @@ class FetchUnit(sim.Component):
                         self.offset = branch_target[1]
                 else:
                     self.pe.ResInst.branch_target.pop(0)
+                yield self.hold(3)
             # If fetch process reach end of file passivate it
-            if self.bb_name == "END":
+            if self.bb_name == "END" and not self.pe.ResInst.miss_branch:
                 self.pe.ResInst.finished = True
                 yield self.passivate()
             else:
@@ -93,7 +98,7 @@ class FetchUnit(sim.Component):
                 if self.flushed:
                     self.flushed = False
                     self.release_fetch()
-                else:
+                elif not self.bb_name == "END":
                     self.create_instr()
             # Condition to advance to next basic block
             if self.bp_take_branch[0]:

@@ -20,6 +20,9 @@ class Resources:
         self.lsb_slots = sim.Resource("lsb_slots", capacity=self.params.lsb_slots)
         self.lq_slots = sim.Resource("lq_slots", capacity=self.params.load_queue_slots)
         self.sq_slots = sim.Resource("sq_slots", capacity=self.params.store_queue_slots)
+        self.s2l_slots = sim.Resource(
+            "s2l_slots", capacity=self.params.store2load_queue_slots
+        )
         self.ls_ordering = sim.Resource("ls_ordering", capacity=1)
         self.agu_resource = sim.Resource("agu_resource", capacity=1)
         self.brob_resource = sim.Resource(
@@ -38,7 +41,9 @@ class Resources:
             "dispatch_ports", capacity=self.params.fetch_width
         )
         self.alloc_ports = sim.Resource("alloc_ports", capacity=self.params.fetch_width)
-        self.cache_ports = sim.Resource("cache_ports", capacity=1)
+        self.cache_ports = sim.Resource(
+            "cache_ports", capacity=self.params.dcache_ports
+        )
         self.mshrs = sim.Resource("mshrs", capacity=self.params.dcache_mshrs)
         self.store_state = sim.State("store_state", value=True)
         self.commit_ports = sim.Resource(

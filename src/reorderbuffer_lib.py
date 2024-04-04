@@ -8,9 +8,9 @@ class ReorderBuffer:
     def rob_head(self, instr):
         return instr == self.rob_list[0]
 
-    def store_next2commit(self, instr):
+    def store_next2commit(self):
         try:
-            store = self.rob_list[self.rob_list.index(instr) + 1]
+            store = self.rob_list[1]
         except IndexError:
             pass
         else:
@@ -38,6 +38,10 @@ class ReorderBuffer:
 
     def release_instr(self):
         self.rob_list.pop(0)
+        try:
+            self.rob_list[0].commit_head.set(True)
+        except IndexError:
+            pass
 
     def recovery_rob(self, recovery_instr):
         head_instr = self.rob_list[-1]
