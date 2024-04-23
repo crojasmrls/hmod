@@ -53,7 +53,7 @@ class KonataSignature(sim.Component):
                 self.fk.write(
                     "L\t" + str(konata_id) + "\t0\t" + str(line) + ": " + instr + "\n"
                 )
-                self.fk.write("S\t" + str(konata_id) + "\t0\tFET\n")
+                self.fk.write("S\t" + str(konata_id) + "\t0\tF\n")
         else:
             raise TypeError("Instr id and thread id must be integer values!!")
 
