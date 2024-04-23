@@ -2,9 +2,9 @@ import math
 
 
 class PipelineParams:
-    fetch_width = 8
-    commit_width = 8
-    int_alus = 6
+    fetch_width = 4
+    commit_width = 4
+    int_alus = 4
     physical_registers = 256
     branch_units = 2
     rob_entries = 192
