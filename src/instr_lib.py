@@ -420,7 +420,7 @@ class Instr(sim.Component):
             or self.promoted
         ):
             self.p_dest.reg_state.set(True)
-        yield self.hold(0)  # Hold for rre stage
+        yield self.hold(1)  # Hold for rre stage
 
     def stores_lock(self):
         # Store locks until it is the next head of the ROB
