@@ -355,16 +355,16 @@ class Instr(sim.Component):
     def dispatch_alloc(self):
         yield self.request(self.pe.ResInst.dispatch_ports)
         self.release((self.pe.ResInst.rename_ports, 1))
-        # self.pe.konata_signature.print_stage(
-        #    "RNM", "RNM", self.pe.thread_id, self.instr_id
-        # )
-        yield self.hold(1)  # Hold for dispatch stage
-        yield self.request(self.pe.ResInst.alloc_ports)
-        self.release((self.pe.ResInst.dispatch_ports, 1))
         self.pe.konata_signature.print_stage(
             "RNM", "DIS", self.pe.thread_id, self.instr_id
         )
-        yield self.hold(0)  # Hold for allocation stage
+        yield self.hold(1)  # Hold for dispatch stage
+        yield self.request(self.pe.ResInst.alloc_ports)
+        self.release((self.pe.ResInst.dispatch_ports, 1))
+        # self.pe.konata_signature.print_stage(
+        #     "RNM", "ALL", self.pe.thread_id, self.instr_id
+        # )
+        # yield self.hold(1)  # Hold for allocation stage
 
     def issue_logic(self):
         # Wake-up
