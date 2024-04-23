@@ -341,7 +341,7 @@ class Instr(sim.Component):
         self.pe.konata_signature.print_stage(
             "RRE", "AGU", self.pe.thread_id, self.instr_id
         )
-        # yield self.hold(1)
+        yield self.hold(1)
         self.pe.konata_signature.print_stage(
             "AGU", "DIS", self.pe.thread_id, self.instr_id
         )
