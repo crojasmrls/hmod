@@ -466,21 +466,21 @@ class Instr(sim.Component):
             and self.decoded_fields.branch_target == self.bp_take_branch[1]
         )
         if not self.bp_hit:
-            self.pe.ResInst.miss_branch.append(True)
+            self.pe.ResInst.miss_branch = [True]
             self.fetch_unit.flushed = True
             if self.branch_result:
                 if (
                     self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                     is dec.InstrLabel.JALR
                 ):
-                    self.pe.ResInst.branch_target.append((self.p_sources[0].value, 0))
+                    self.pe.ResInst.branch_target = [(self.p_sources[0].value, 0)]
                     self.decoded_fields.branch_target = self.p_sources[0].value
                 else:
-                    self.pe.ResInst.branch_target.append(
+                    self.pe.ResInst.branch_target = [
                         (self.decoded_fields.branch_target, 0)
-                    )
+                    ]
             else:
-                self.pe.ResInst.branch_target.append((self.bb_name, self.offset + 1))
+                self.pe.ResInst.branch_target = [(self.bb_name, self.offset + 1)]
             self.recovery()
 
     def recovery(self):
