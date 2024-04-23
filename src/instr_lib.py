@@ -74,7 +74,7 @@ class Instr(sim.Component):
         yield self.request(self.pe.ResInst.decode_ports)
         self.fetch_unit.release_fetch()
         self.pe.konata_signature.print_stage(
-            "FET", "DEC", self.pe.thread_id, self.instr_id
+            "F", "DEC", self.pe.thread_id, self.instr_id
         )
         yield self.hold(1)  # Hold for decode stage
         # Front end Resources
@@ -229,7 +229,7 @@ class Instr(sim.Component):
         self.release((self.pe.ResInst.s2l_slots, 1))
         self.release((self.pe.ResInst.cache_ports, 1))
         self.pe.konata_signature.print_stage(
-            "FWD", "CMP", self.pe.thread_id, self.instr_id
+            "FWD", "CPL", self.pe.thread_id, self.instr_id
         )
         yield self.hold(1)
 
@@ -271,14 +271,14 @@ class Instr(sim.Component):
         )
         yield self.hold(1)  # Issue of LSU latency
         self.pe.konata_signature.print_stage(
-            "ISS", "CMP", self.pe.thread_id, self.instr_id
+            "ISS", "CPL", self.pe.thread_id, self.instr_id
         )
         yield self.hold(1)  # Complete of LSU latency
         # Wait to be in commit window
         yield from self.wait_commit()
         self.release((self.pe.ResInst.commit_ports, 1))
         self.pe.konata_signature.print_stage(
-            "CMP", "SBU", self.pe.thread_id, self.instr_id
+            "CPL", "SBU", self.pe.thread_id, self.instr_id
         )
         self.store_buff = True
         if self.cache_port:
@@ -403,9 +403,9 @@ class Instr(sim.Component):
                     self.release((self.pe.ResInst.int_units, 1))
 
     def read_registers(self):
-        self.pe.konata_signature.print_stage(
-            "ISS", "RRE", self.pe.thread_id, self.instr_id
-        )
+        # self.pe.konata_signature.print_stage(
+        #     "ISS", "RRE", self.pe.thread_id, self.instr_id
+        # )
         # Do computation, all the values are computed in advance
         # the issue latencies are controlled to match the pipeline latencies
         try:
@@ -434,9 +434,9 @@ class Instr(sim.Component):
         )
 
     def execution(self):
-        self.pe.konata_signature.print_stage(
-            "RRE", "EXE", self.pe.thread_id, self.instr_id
-        )
+        # self.pe.konata_signature.print_stage(
+        #     "RRE", "EXE", self.pe.thread_id, self.instr_id
+        # )
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
             if self.pe.performance_counters.CountCtrl.is_enable():
                 self.pe.performance_counters.ECInst.increase_counter("exe_branches")
@@ -615,11 +615,11 @@ class Instr(sim.Component):
 
     def wait_commit(self):
         self.pe.konata_signature.print_stage(
-            "EXE", "CMP", self.pe.thread_id, self.instr_id
+            "EXE", "CPL", self.pe.thread_id, self.instr_id
         )
         yield self.hold(1)  # Hold for cmp stage
         self.pe.konata_signature.print_stage(
-            "CMP", "ROB", self.pe.thread_id, self.instr_id
+            "CPL", "ROB", self.pe.thread_id, self.instr_id
         )
         # Pooling to wait rob head
         self.pe.RoBInst.store_next2commit()
@@ -648,7 +648,7 @@ class Instr(sim.Component):
         yield self.request(self.pe.ResInst.commit_ports)
         # Commit
         self.pe.konata_signature.print_stage(
-            "ROB", "COM", self.pe.thread_id, self.instr_id
+            "ROB", "CMT", self.pe.thread_id, self.instr_id
         )
         yield self.hold(1)  # Commit cycle
 
