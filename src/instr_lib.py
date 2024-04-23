@@ -617,10 +617,10 @@ class Instr(sim.Component):
         self.pe.konata_signature.print_stage(
             "EXE", "CMP", self.pe.thread_id, self.instr_id
         )
-        #    yield self.hold(1)  # Hold for cmp stage
-        # self.pe.konata_signature.print_stage(
-        #    "CMP", "ROB", self.pe.thread_id, self.instr_id
-        # )
+        yield self.hold(1)  # Hold for cmp stage
+        self.pe.konata_signature.print_stage(
+            "CMP", "ROB", self.pe.thread_id, self.instr_id
+        )
         # Pooling to wait rob head
         self.pe.RoBInst.store_next2commit()
         if self.pe.RoBInst.rob_head(self):
