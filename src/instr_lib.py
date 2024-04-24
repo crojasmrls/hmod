@@ -186,7 +186,7 @@ class Instr(sim.Component):
             self.pe.konata_signature.print_stage(
                 "DIS", "ISS", self.pe.thread_id, self.instr_id
             )
-            yield self.hold(1)  # Issue of LSU latency
+            # yield self.hold(1)  # Issue of LSU latency
             self.release((self.pe.ResInst.cache_ports, 1))
             yield from self.data_cache_pipeline()
         if self.pe.performance_counters.CountCtrl.is_enable():
@@ -320,10 +320,15 @@ class Instr(sim.Component):
                 yield self.wait(self.p_sources[0].reg_state)
             else:
                 yield self.wait(self.p_sources[1].reg_state)
-            self.pe.konata_signature.print_stage(
-                "QUE", "WUP", self.pe.thread_id, self.instr_id
-            )
+            # self.pe.konata_signature.print_stage(
+            #     "QUE", "WUP", self.pe.thread_id, self.instr_id
+            # )
             yield self.request(self.pe.ResInst.agu_resource)
+            self.pe.konata_signature.print_stage(
+                "QUE", "ISS", self.pe.thread_id, self.instr_id
+            )
+            yield self.hold(1)
+            self.release((self.pe.ResInst.agu_resource, 1))
             yield from self.read_registers()
             if (
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
@@ -336,7 +341,6 @@ class Instr(sim.Component):
                 self.pe.konata_signature.print_stage(
                     "RRE", "DIS", self.pe.thread_id, self.instr_id
                 )
-            self.release((self.pe.ResInst.agu_resource, 1))
         self.release((self.pe.ResInst.int_queue, 1))
         self.pe.konata_signature.print_stage(
             "RRE", "AGU", self.pe.thread_id, self.instr_id
