@@ -183,9 +183,9 @@ class Instr(sim.Component):
             yield from self.store_to_load_fwd()
         else:
             yield self.request(self.pe.ResInst.cache_ports)
-            self.pe.konata_signature.print_stage(
-                "DIS", "ISS", self.pe.thread_id, self.instr_id
-            )
+            # self.pe.konata_signature.print_stage(
+            #     "DIS", "ISS", self.pe.thread_id, self.instr_id
+            # )
             # yield self.hold(1)  # Issue of LSU latency
             self.release((self.pe.ResInst.cache_ports, 1))
             yield from self.data_cache_pipeline()
@@ -197,17 +197,17 @@ class Instr(sim.Component):
         self.request(self.pe.ResInst.s2l_slots)
         while not self.psrcs_hit:
             yield self.wait(self.store_fwd.p_sources[0].reg_state)
-            self.pe.konata_signature.print_stage(
-                "DIS", "WUP", self.pe.thread_id, self.instr_id
-            )
+            # self.pe.konata_signature.print_stage(
+            #     "DIS", "WUP", self.pe.thread_id, self.instr_id
+            # )
             if not self.store_fwd.store_buff:
                 # Request read port if data is not in Store Data Buffer
                 yield self.request(self.pe.ResInst.cache_ports)
                 self.cache_port = True
-            self.pe.konata_signature.print_stage(
-                "WUP", "ISS", self.pe.thread_id, self.instr_id
-            )
-            yield self.hold(1)  # Issue cycle
+            # self.pe.konata_signature.print_stage(
+            #     "WUP", "ISS", self.pe.thread_id, self.instr_id
+            # )
+            # yield self.hold(1)  # Issue cycle
             # Request write port only if read port has not been requested
             if not self.cache_port:
                 yield self.request(self.pe.ResInst.cache_ports)
@@ -347,7 +347,7 @@ class Instr(sim.Component):
         )
         yield self.hold(1)
         self.pe.konata_signature.print_stage(
-            "AGU", "DIS", self.pe.thread_id, self.instr_id
+            "AGU", "LSU", self.pe.thread_id, self.instr_id
         )
 
     def check_psrcs_hit(self):
