@@ -555,8 +555,8 @@ class Instr(sim.Component):
                 ):
                     if self.pe.params.speculate_on_load:
                         self.p_dest.reg_state.set(True)
-                if x == self.pe.params.dcache_load_hit_latency - 1:
-                    self.p_dest.reg_state.set(self.cache_hit)
+                # if x == self.pe.params.dcache_load_hit_latency - 1:
+                #     self.p_dest.reg_state.set(self.cache_hit)
             yield self.hold(1)  # Hold for mem stage
             if (
                 x == 0
@@ -579,11 +579,11 @@ class Instr(sim.Component):
                     self.pe.DataCacheInst.mshrs.pop(self.address_align)
                 except KeyError:
                     pass
-        if (
-            self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD
-            and not self.pe.params.speculate_on_load
-        ):
-            self.p_dest.reg_state.set(True)
+        # if (
+        #     self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD
+        #     and not self.pe.params.speculate_on_load
+        # ):
+        #     self.p_dest.reg_state.set(True)
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE:
             if self.pe.performance_counters.CountCtrl.is_enable():
                 self.pe.performance_counters.ECInst.increase_counter("exe_stores")
@@ -618,9 +618,14 @@ class Instr(sim.Component):
             "EXE", "CPL", self.pe.thread_id, self.instr_id
         )
         yield self.hold(1)  # Hold for cmp stage
-        self.pe.konata_signature.print_stage(
-            "CPL", "ROB", self.pe.thread_id, self.instr_id
-        )
+        # self.pe.konata_signature.print_stage(
+        #     "CPL", "ROB", self.pe.thread_id, self.instr_id
+        # )
+        if (
+            self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD
+            and not self.pe.params.speculate_on_load
+        ):
+            self.p_dest.reg_state.set(True)
         # Pooling to wait rob head
         self.pe.RoBInst.store_next2commit()
         if self.pe.RoBInst.rob_head(self):
