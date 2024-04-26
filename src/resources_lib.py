@@ -20,6 +20,9 @@ class Resources:
         self.lsb_slots = sim.Resource("lsb_slots", capacity=self.params.lsb_slots)
         self.lq_slots = sim.Resource("lq_slots", capacity=self.params.load_queue_slots)
         self.sq_slots = sim.Resource("sq_slots", capacity=self.params.store_queue_slots)
+        self.sb_slots = sim.Resource(
+            "sb_slots", capacity=self.params.store_buffer_slots
+        )
         self.s2l_slots = sim.Resource(
             "s2l_slots", capacity=self.params.store2load_queue_slots
         )
