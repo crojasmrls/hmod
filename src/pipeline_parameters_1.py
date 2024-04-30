@@ -24,20 +24,20 @@ class PipelineParams:
     bp_entries = 2048
     # Data cache parameters
     dcache_ports = 1
-    dcache_mshrs = 4
+    dcache_mshrs = 64
     # Dcache latencies
     dcache_load_hit_latency = 1
     dcache_store_hit_latency = 1
-    l1_dcache_miss_latency = 20
+    l1_dcache_miss_latency = 25
     l2_dcache_miss_latency = 50
     l3_dcache_miss_latency = 144
     # Dcache dimensions
     dcache_line_bytes = 64
     # Constant to shift the address to point a single cache line
     mshr_shamt = int(math.log(dcache_line_bytes, 2))
-    # L1 64KB
-    l1_ways = 2
-    l1_sets = 512
+    # L1 32KB, LOX tile default
+    l1_ways = 4
+    l1_sets = 128
     # L2 2MB,
     l2_ways = 8
     l2_sets = 4096
