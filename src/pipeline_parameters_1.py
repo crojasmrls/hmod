@@ -13,6 +13,7 @@ class PipelineParams:
     OoO_lsu = True
     load_queue_slots = 32
     store_queue_slots = 32
+    lsq_slots = 64
     store_buffer_slots = 32
     store2load_queue_slots = 32
     brob_entries = 64

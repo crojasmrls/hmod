@@ -166,7 +166,7 @@ class Instr(sim.Component):
     def load_queue(self):
         yield from self.dispatch_alloc()
         yield self.request(self.pe.ResInst.ls_ordering)
-        yield self.request(self.pe.ResInst.lq_slots)
+        yield self.request(self.pe.ResInst.lsq_slots)
         yield self.request(self.pe.ResInst.int_queue)
         self.release((self.pe.ResInst.alloc_ports, 1))
         self.pe.konata_signature.print_stage(
@@ -257,7 +257,7 @@ class Instr(sim.Component):
     def store_queue(self):
         yield from self.dispatch_alloc()
         yield self.request(self.pe.ResInst.ls_ordering)
-        yield self.request(self.pe.ResInst.sq_slots)
+        yield self.request(self.pe.ResInst.lsq_slots)
         yield self.request(self.pe.ResInst.int_queue)
         self.release((self.pe.ResInst.alloc_ports, 1))
         self.pe.konata_signature.print_stage(
