@@ -103,10 +103,10 @@ class PerformanceCounters:
             ("dcache_hits", 0),
             ("dcache_misses", 0),
             ("load_forwards", 0),
-            # ("l2_hits", 0),
-            # ("l2_misses", 0),
-            # ("l3_hits", 0),
-            # ("l3_misses", 0),
+            ("l2_hits", 0),
+            ("l2_misses", 0),
+            ("l3_hits", 0),
+            ("l3_misses", 0),
         ]
         for counter in counters:
             self.ECInst.add_counter(counter[0], counter[1])
