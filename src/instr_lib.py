@@ -235,6 +235,8 @@ class Instr(sim.Component):
         #     "FWD", "CPL", self.pe.thread_id, self.instr_id
         # )
         yield self.hold(1)
+        if self.pe.performance_counters.CountCtrl.is_enable():
+            self.pe.performance_counters.ECInst.increase_counter("load_forwards")
 
     def load_disambiguation(self):
         if not self.older_store:
