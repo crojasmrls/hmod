@@ -25,11 +25,12 @@ class PipelineParams:
     bp_entries = 2048
     # Data cache parameters
     dcache_ports = 1
-    dcache_mshrs = 64
+    # dcache_mshrs = 64
+    dcache_mshrs = 4
     # Dcache latencies
     dcache_load_hit_latency = 1
     dcache_store_hit_latency = 1
-    l1_dcache_miss_latency = 25
+    l1_dcache_miss_latency = 27
     l2_dcache_miss_latency = 50
     l3_dcache_miss_latency = 144
     # Dcache dimensions
