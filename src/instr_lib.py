@@ -577,6 +577,8 @@ class Instr(sim.Component):
             #     and not self.pe.params.OoO_lsu
             # ):
             #     self.release((self.pe.ResInst.cache_ports, 1))
+            if self.mshr_owner and x > 2:
+                self.pe.DataCacheInst.mshrs[self.address_align] -= 1
             if x == 0:
                 self.release((self.pe.ResInst.cache_ports, 1))
         if not self.cache_hit:
