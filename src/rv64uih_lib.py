@@ -322,6 +322,9 @@ class Calls:
             "puts": lambda: Calls.puts_call(
                 instr.p_sources.copy(), instr.pe.DataCacheInst
             ),
+            "putchar": lambda: Calls.putschar_call(
+                instr.p_sources.copy(), instr.pe.DataCacheInst
+            ),
         }.get(instr.decoded_fields.call_code, lambda: None)()
 
     @staticmethod
@@ -329,11 +332,15 @@ class Calls:
         print(Calls.replace_end_line(data_cache.dc_load(sources[0].value)))
 
     @staticmethod
+    def putschar_call(sources, data_cache):
+        print(chr(sources[0].value), end="")
+
+    @staticmethod
     def printf_call(sources, data_cache):
         text = data_cache.dc_load(sources.pop(0).value)
         while text.count("%d") != 0:
             text = text.replace("%d", str(sources.pop(0).value), 1)
-        print(Calls.replace_end_line(text))
+        print(Calls.replace_end_line(text), end="")
 
     @staticmethod
     def replace_end_line(text):
