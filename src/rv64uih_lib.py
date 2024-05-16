@@ -184,7 +184,7 @@ class InstructionTable:
             # INT     label               destination n_sources immediate pipelined latency computation          n_bytes
             'add':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_add),
             'sub':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sub),
-            'mul':    (InstrLabel.INT,    True,       2,        False,    True,     2,      ExeFuncts.exec_mul),
+            'mul':    (InstrLabel.INT,    True,       2,        False,    True,     3,      ExeFuncts.exec_mul),
             'sll':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sll),
             'mv':     (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_add),
             'sext.w': (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_sext, 4),
