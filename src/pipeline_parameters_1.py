@@ -26,7 +26,7 @@ class PipelineParams:
     # Data cache parameters
     dcache_ports = 1
     # dcache_mshrs = 64
-    dcache_mshrs = 4
+    dcache_mshrs = 5
     # Dcache latencies
     dcache_load_hit_latency = 2
     dcache_store_hit_latency = 2
