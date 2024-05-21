@@ -184,7 +184,7 @@ class InstructionTable:
             # INT     label               destination n_sources immediate pipelined latency computation          n_bytes
             'add':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_add),
             'sub':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sub),
-            'mul':    (InstrLabel.INT,    True,       2,        False,    True,     2,      ExeFuncts.exec_mul),
+            'mul':    (InstrLabel.INT,    True,       2,        False,    True,     3,      ExeFuncts.exec_mul),
             'sll':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sll),
             'mv':     (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_add),
             'sext.w': (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_sext, 4),
@@ -322,6 +322,9 @@ class Calls:
             "puts": lambda: Calls.puts_call(
                 instr.p_sources.copy(), instr.pe.DataCacheInst
             ),
+            "putchar": lambda: Calls.putschar_call(
+                instr.p_sources.copy(), instr.pe.DataCacheInst
+            ),
         }.get(instr.decoded_fields.call_code, lambda: None)()
 
     @staticmethod
@@ -329,15 +332,19 @@ class Calls:
         print(Calls.replace_end_line(data_cache.dc_load(sources[0].value)))
 
     @staticmethod
+    def putschar_call(sources, data_cache):
+        print(chr(sources[0].value), end="")
+
+    @staticmethod
     def printf_call(sources, data_cache):
         text = data_cache.dc_load(sources.pop(0).value)
         while text.count("%d") != 0:
             text = text.replace("%d", str(sources.pop(0).value), 1)
-        print(Calls.replace_end_line(text))
+        print(Calls.replace_end_line(text), end="")
 
     @staticmethod
     def replace_end_line(text):
-        return text[::-1].replace("n\\", "", 1)[::-1].replace("\\n", "\n")
+        return text.replace("\\n", "\n")
 
 
 class Magics:
