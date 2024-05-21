@@ -344,7 +344,7 @@ class Calls:
 
     @staticmethod
     def replace_end_line(text):
-        return text[::-1].replace("n\\", "", 1)[::-1].replace("\\n", "\n")
+        return text.replace("\\n", "\n")
 
 
 class Magics:
