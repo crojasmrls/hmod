@@ -114,9 +114,9 @@ class PerformanceCounters:
     def print_metrics(self):
         for metric in self.MetricsList:
             try:
-                print(metric + ": " + f"{self.metric_functions(metric):.{2}f}")
+                print(f"{metric}: {self.metric_functions(metric):.{2}f}")
             except ZeroDivisionError:
-                print(metric + ": " + f"{0.00:.{2}f}")
+                print(f"{metric}: {0.00:.{2}f}")
 
     # Metric functions
     def metric_functions(self, metric):
