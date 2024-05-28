@@ -5,21 +5,33 @@ import pipeline_parameters_1 as par1
 import rv64uih_lib as dec
 import konata_lib as kon
 import counters_lib as pec
+import argparse
 
 # In recent version of Salabim it is necessary to disable the yieldless attribute to model with coroutines
 try:
     sim.yieldless(False)
 except AttributeError:
     pass
+# Arguments
+args_parser = argparse.ArgumentParser(
+    prog="HMOD",
+    description="RUn agile RISC-V microarchitecture simulations",
+    epilog="Copyright 2024 Carlos Rojas Morales",
+)
+args_parser.add_argument(
+    "-s",
+    "--Assembly",
+    help="RISC-V assembly code to execute",
+    default="../risc-v-examples/c_implementations/matrix_mul.s",
+    type=str,
+)
 
+args = args_parser.parse_args()
 
-program1 = "risc-assembly/stores.asm"
-program2 = "risc-assembly/add.asm"
-program3 = "risc-assembly/bublesort.asm"
-program4 = "c_implementations/bubblesort.s"
-program5 = "c_implementations/spmv.s"
-program6 = "c_implementations/counters.s"
-program7 = "c_implementations/test.s"
+if args.Assembly:
+    program = args.Assembly
+    print("Assembly program:" + program)
+
 konata_out = "konata_signature.txt"
 torture_out = "torture_signature.sig"
 cycles = 400000
@@ -52,7 +64,7 @@ PEInst0 = pe.PE(
 #                 program=program2, thread_id=1,
 #                 konata_signature=KonataSignatureInst)
 
-PEInst0.ASMParserInst.read_program("../risc-v-examples/" + program5, mem_map_1)
+PEInst0.ASMParserInst.read_program(program, mem_map_1)
 PEInst0.RFInst.init_regs(init_reg_values, register_table)
 # PEInst0.InstrCacheInst.print_program()
 
