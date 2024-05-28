@@ -118,6 +118,14 @@ class PerformanceCounters:
             except ZeroDivisionError:
                 print(f"{metric}: {0.00:.{2}f}")
 
+    def dump_metrics(self, filename):
+        with open(filename, "w") as file:
+            for metric in self.MetricsList:
+                try:
+                    file.write(f"{metric}, {self.metric_functions(metric):.{2}f}\n")
+                except ZeroDivisionError:
+                    file.write(f"{metric}, {0.00:.{2}f}\n")
+
     # Metric functions
     def metric_functions(self, metric):
         return {

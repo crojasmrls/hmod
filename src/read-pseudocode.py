@@ -66,6 +66,19 @@ args_parser.add_argument(
     default=400000,
     type=int,
 )
+args_parser.add_argument(
+    "-m",
+    "--Metrics",
+    help="dump metrics in csv format",
+    action="store_true",
+    default=False,
+)
+args_parser.add_argument(
+    "--Metrics_name",
+    help="metrics file name",
+    default="stats.csv",
+    type=str,
+)
 
 args = args_parser.parse_args()
 program = args.Assembly
@@ -73,8 +86,10 @@ outdir = args.Outdir
 cycles = args.Cycles
 konata_dump_on = args.Konata
 torture_dump_on = args.Tracer
+metrics_dump_on = args.Metrics
 konata_out = f"{outdir}/{args.Konata_name}"
 torture_out = f"{outdir}/{args.Tracer_name}"
+metrics_out = f"{outdir}/{args.Metrics_name}"
 os.makedirs(outdir, exist_ok=True)
 
 params_1 = par1.PipelineParams
@@ -123,4 +138,6 @@ print(
 )
 # print("Data cache dump:")
 # PEInst0.DataCacheInst.print_data_cache()
+if metrics_dump_on:
+    PerformanceCountersInst.dump_metrics(metrics_out)
 PerformanceCountersInst.print_metrics()
