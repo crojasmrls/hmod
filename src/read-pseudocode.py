@@ -1,11 +1,12 @@
 import time
+import argparse
+import os
 import salabim as sim
 import pe_lib as pe
 import pipeline_parameters_1 as par1
 import rv64uih_lib as dec
 import konata_lib as kon
 import counters_lib as pec
-import argparse
 
 # In recent version of Salabim it is necessary to disable the yieldless attribute to model with coroutines
 try:
@@ -15,28 +16,67 @@ except AttributeError:
 # Arguments
 args_parser = argparse.ArgumentParser(
     prog="HMOD",
-    description="RUn agile RISC-V microarchitecture simulations",
+    description="Run agile RISC-V microarchitecture simulations",
     epilog="Copyright 2024 Carlos Rojas Morales",
 )
 args_parser.add_argument(
     "-s",
     "--Assembly",
     help="RISC-V assembly code to execute",
-    default="../risc-v-examples/c_implementations/matrix_mul.s",
+    default="./risc-v-examples/c_implementations/matrix_mul.s",
     type=str,
+)
+args_parser.add_argument(
+    "-o",
+    "--Outdir",
+    help="output results directory",
+    default="./output",
+    type=str,
+)
+args_parser.add_argument(
+    "-k",
+    "--Konata",
+    help="dump konata trace",
+    action="store_true",
+    default=False,
+)
+args_parser.add_argument(
+    "-t",
+    "--Tracer",
+    help="dump signature trace",
+    action="store_true",
+    default=False,
+)
+args_parser.add_argument(
+    "--Konata_name",
+    help="konata trace file name",
+    default="konata_signature.txt",
+    type=str,
+)
+args_parser.add_argument(
+    "--Tracer_name",
+    help="signature trace file name",
+    default="torture_signature.sig",
+    type=str,
+)
+args_parser.add_argument(
+    "-c",
+    "--Cycles",
+    help="maximun simulation cycles",
+    default=400000,
+    type=int,
 )
 
 args = args_parser.parse_args()
+program = args.Assembly
+outdir = args.Outdir
+cycles = args.Cycles
+konata_dump_on = args.Konata
+torture_dump_on = args.Tracer
+konata_out = f"{outdir}/{args.Konata_name}"
+torture_out = f"{outdir}/{args.Tracer_name}"
+os.makedirs(outdir, exist_ok=True)
 
-if args.Assembly:
-    program = args.Assembly
-    print("Assembly program:" + program)
-
-konata_out = "konata_signature.txt"
-torture_out = "torture_signature.sig"
-cycles = 400000
-konata_dump_on = True
-torture_dump_on = True
 params_1 = par1.PipelineParams
 mem_map_1 = par1.MemoryMap
 init_reg_values = par1.RegisterInit.init_reg_values

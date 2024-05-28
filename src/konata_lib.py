@@ -8,9 +8,9 @@ class KonataSignature(sim.Component):
         self.torture_out = torture_out
         self.torture_dump_on = torture_dump_on
         if self.konata_dump_on:
-            self.fk = open("../" + self.konata_out, "w")
+            self.fk = open(self.konata_out, "w")
         if self.torture_dump_on:
-            self.ft = open("../" + self.torture_out, "w")
+            self.ft = open(self.torture_out, "w")
         self.cycle_count = 0
         self.konata_id_count = 0
         self.konata_ids = {}
