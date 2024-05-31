@@ -47,7 +47,7 @@ class PipelineParams:
     l3_ways = 16
     l3_sets = 16384
 
-    speculate_on_load = False
+    speculate_on_load = True
 
 
 class MemoryMap:
