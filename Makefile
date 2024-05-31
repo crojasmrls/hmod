@@ -20,7 +20,7 @@ $(bmarks_riscv_asm): $(RISCV_CEXAMPLES)/%.s: $(RISCV_CEXAMPLES)/%/ $(wildcard $(
 ## HMOD variables
 SRCS_PY ?= $(BASE_DIR)/src
 MAIN_PY ?= $(SRCS_PY)/read-pseudocode.py
-DEPS_PY = $(wildcard $(SRC_PY)/*.py)
+DEPS_PY = $(wildcard $(SRCS_PY)/*.py)
 OUT_DIR ?= $(BASE_DIR)/outputs
 LOG_DIR ?= $(OUT_DIR)/logs
 MAX_CYCLES ?= 1000000
