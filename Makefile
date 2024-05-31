@@ -18,7 +18,9 @@ $(bmarks_riscv_asm): $(RISCV_CEXAMPLES)/%.s: $(RISCV_CEXAMPLES)/%/ $(wildcard $(
 	$(MAKE) -C $(RISCV_CEXAMPLES) $(notdir $@)
 
 ## HMOD variables
-MAIN_PY ?= $(BASE_DIR)/src/read-pseudocode.py
+SRCS_PY ?= $(BASE_DIR)/src
+MAIN_PY ?= $(SRCS_PY)/read-pseudocode.py
+DEPS_PY = $(wildcard $(SRC_PY)/*.py)
 OUT_DIR ?= $(BASE_DIR)/outputs
 LOG_DIR ?= $(OUT_DIR)/logs
 MAX_CYCLES ?= 1000000
@@ -26,9 +28,10 @@ FLAGS_PY ?= -k -t -m -c $(MAX_CYCLES)
 
 #HMOD run
 python_logs  = $(addprefix $(LOG_DIR)/, $(addsuffix .log, $(bmarks)))
-$(python_logs): $(LOG_DIR)/%.log: $(RISCV_CEXAMPLES)/%.s
+$(python_logs): $(LOG_DIR)/%.log: $(RISCV_CEXAMPLES)/%.s $(DEPS_PY)
 	mkdir -p $(dir $@)
-	$(PYTHON) $(MAIN_PY) $(FLAGS_PY) -o $(OUT_DIR)/$* -s $(RISCV_CEXAMPLES)/$*.s &> $@
+	time $(PYTHON) $(MAIN_PY) $(FLAGS_PY) -o $(OUT_DIR)/$* -s $(RISCV_CEXAMPLES)/$*.s &> $@
+	@(echo "$(notdir $(basename $@)) finished")
 junk+=$(python_logs)
 
 run-all: $(python_logs)
