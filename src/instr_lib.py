@@ -185,6 +185,8 @@ class Instr(sim.Component):
         else:
             yield self.request(self.pe.ResInst.mshrs)
             yield self.request(self.pe.ResInst.cache_ports)
+            if self.pe.params.HPDC_store_bubble:
+                yield self.request(self.pe.ResInst.store_bubble)
             # self.pe.konata_signature.print_stage(
             #     "DIS", "ISS", self.pe.thread_id, self.instr_id
             # )
@@ -580,7 +582,22 @@ class Instr(sim.Component):
             if self.mshr_owner and x > 2:
                 self.pe.DataCacheInst.mshrs[self.address_align] -= 1
             if x == 0:
+                if self.pe.params.HPDC_store_bubble:
+                    if (
+                        self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                        is dec.InstrLabel.STORE
+                    ):
+                        yield self.request(self.pe.ResInst.store_bubble)
+                    else:
+                        self.release((self.pe.ResInst.store_bubble, 1))
                 self.release((self.pe.ResInst.cache_ports, 1))
+            if (
+                x == 1
+                and self.pe.params.HPDC_store_bubble
+                and self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                is dec.InstrLabel.STORE
+            ):
+                self.release((self.pe.ResInst.store_bubble, 1))
         if not self.cache_hit:
             yield self.request(self.pe.ResInst.cache_ports)
             yield self.hold(1)

@@ -46,8 +46,9 @@ class PipelineParams:
     # L3 16MB
     l3_ways = 16
     l3_sets = 16384
-
+    # speculate with load hits
     speculate_on_load = True
+    HPDC_store_bubble = True
 
 
 class MemoryMap:

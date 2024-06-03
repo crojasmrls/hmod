@@ -48,6 +48,7 @@ class Resources:
         self.cache_ports = sim.Resource(
             "cache_ports", capacity=self.params.dcache_ports
         )
+        self.store_bubble = sim.Resource("store_bubble", capacity=1)
         self.mshrs = sim.Resource("mshrs", capacity=self.params.dcache_mshrs)
         self.store_state = sim.State("store_state", value=True)
         self.commit_ports = sim.Resource(
