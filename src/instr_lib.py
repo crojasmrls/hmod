@@ -568,7 +568,7 @@ class Instr(sim.Component):
                     x + self.pe.params.issue_to_exe_latency
                     == self.pe.params.dcache_load_hit_latency
                 ):
-                    if self.pe.params.speculate_on_load:
+                    if self.pe.params.speculate_on_load_hit:
                         self.p_dest.reg_state.set(True)
                 # if x == self.pe.params.dcache_load_hit_latency - 1:
                 #     self.p_dest.reg_state.set(self.cache_hit)
@@ -618,7 +618,7 @@ class Instr(sim.Component):
                     pass
         # if (
         #     self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD
-        #     and not self.pe.params.speculate_on_load
+        #     and not self.pe.params.speculate_on_load_hit
         # ):
         #     self.p_dest.reg_state.set(True)
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE:
@@ -664,7 +664,7 @@ class Instr(sim.Component):
         # )
         if (
             self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD
-            and not self.pe.params.speculate_on_load
+            and not self.pe.params.speculate_on_load_hit
         ):
             self.p_dest.reg_state.set(True)
         # Pooling to wait rob head

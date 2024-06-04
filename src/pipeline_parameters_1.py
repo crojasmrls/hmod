@@ -47,8 +47,10 @@ class PipelineParams:
     l3_ways = 16
     l3_sets = 16384
     # speculate with load hits
-    speculate_on_load = True
+    speculate_on_load_hit = True
     HPDC_store_bubble = True
+    # speculation wit OoO loads that does not have all the previus stores calculated
+    speculate_on_younger_loads = True
 
 
 class MemoryMap:
