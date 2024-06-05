@@ -244,7 +244,7 @@ class Instr(sim.Component):
         if not self.older_store:
             return True
         for store in self.pe.ResInst.store_queue:
-            if not store.address:
+            if not store.address and not self.pe.params.speculate_on_younger_loads:
                 self.ls_collisions[store] = None
             elif store.address == self.address:
                 if self.pe.ResInst.s2l_slots.available_quantity.value > 0:
@@ -301,6 +301,8 @@ class Instr(sim.Component):
         self.store_clear_collisions()
 
     def store_disambiguation(self):
+        load_flush = False
+        younger_loads = False
         for load in self.pe.ResInst.load_queue:
             if self in load.ls_collisions and load.address:
                 if self.address != load.address:
@@ -310,8 +312,20 @@ class Instr(sim.Component):
                         del load.ls_collisions[self]
                         load.promoted = True
                         load.store_fwd = self
-            if not load.ls_collisions:
+            if not load.ls_collisions and not self.pe.params.speculate_on_younger_loads:
                 load.ls_ready.set(True)
+            # load flush condition due to memory violation
+            younger_loads = self is load.older_store or younger_loads
+            if (
+                self.pe.params.speculate_on_younger_loads
+                and not load_flush
+                and younger_loads
+                and load.ls_ready.value.value
+                and self.address == load.address
+            ):
+                load_flush = True
+                self.pe.ResInst.branch_target = [(load.bb_name, load.offset)]
+                self.recovery(load)
 
     def store_clear_collisions(self):
         for load in self.pe.ResInst.load_queue:
@@ -496,11 +510,11 @@ class Instr(sim.Component):
                     ]
             else:
                 self.pe.ResInst.branch_target = [(self.bb_name, self.offset + 1)]
-            self.recovery()
+            self.recovery(self)
 
-    def recovery(self):
-        self.pe.RFInst.recovery_rat(self)
-        self.pe.RoBInst.recovery_rob(self)
+    def recovery(self, recovery_instr):
+        self.pe.RFInst.recovery_rat(recovery_instr)
+        self.pe.RoBInst.recovery_rob(recovery_instr)
         if self.pe.ResInst.finished:
             self.pe.ResInst.finished = False
         if self.fetch_unit.ispassive():
