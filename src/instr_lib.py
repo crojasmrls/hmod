@@ -94,6 +94,12 @@ class Instr(sim.Component):
         self.p_sources = [
             self.pe.RFInst.get_reg(src) for src in self.decoded_fields.sources
         ]
+        # Create RAT checkpoint
+        if (
+            self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+            in dec.InstrLabel.CTRL | dec.InstrLabel.LOAD
+        ):
+            self.pe.RFInst.push_rat(self)
         # Request physical destination
         if self.decoded_fields.instr_tuple[dec.INTFields.DEST]:
             if self.decoded_fields.dest != 0:
@@ -104,9 +110,6 @@ class Instr(sim.Component):
                 self.pe.RFInst.set_reg(self.decoded_fields.dest, self.p_dest)
             else:
                 self.p_dest = self.pe.RFInst.dummy_reg
-        # Create RAT checkpoint
-        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
-            self.pe.RFInst.push_rat(self)
         self.release((self.pe.ResInst.rename_resource, 1))
         self.release((self.pe.ResInst.decode_ports, 1))
         yield self.hold(1)  # Hold for renaming stage
@@ -324,6 +327,8 @@ class Instr(sim.Component):
                 and self.address == load.address
             ):
                 load_flush = True
+                self.fetch_unit.flushed = True
+                self.pe.ResInst.miss_branch = [True]
                 self.pe.ResInst.branch_target = [(load.bb_name, load.offset)]
                 self.recovery(load)
 
@@ -345,6 +350,8 @@ class Instr(sim.Component):
                 yield self.wait(self.p_sources[0].reg_state)
             else:
                 yield self.wait(self.p_sources[1].reg_state)
+                if self.pe.ResInst.load_queue:
+                    yield self.hold(len(self.pe.ResInst.load_queue))
             # self.pe.konata_signature.print_stage(
             #     "QUE", "WUP", self.pe.thread_id, self.instr_id
             # )
@@ -746,6 +753,8 @@ class Instr(sim.Component):
             not self.pe.params.exe_brob_release
             and self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
             in dec.InstrLabel.CTRL
+        ) or (
+            self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD
         ):
             self.pe.RFInst.release_shadow_rat(self)
         # Free claimed pe.ResInst
