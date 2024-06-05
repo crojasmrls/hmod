@@ -331,8 +331,8 @@ class Instr(sim.Component):
         for load in self.pe.ResInst.load_queue:
             if self in load.ls_collisions:
                 del load.ls_collisions[self]
-            if not load.ls_collisions:
-                load.ls_ready.set(True)
+                if not load.ls_collisions:
+                    load.ls_ready.set(True)
             if load.older_store == self:
                 load.older_store = None
 
