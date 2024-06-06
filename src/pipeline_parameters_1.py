@@ -48,9 +48,12 @@ class PipelineParams:
     l3_sets = 16384
     # speculate with load hits
     speculate_on_load_hit = True
+    # HPDC blocking behaivor of loads after stores
     HPDC_store_bubble = True
     # speculation wit OoO loads that does not have all the previus stores calculated
     speculate_on_younger_loads = True
+    # Store data dependency before AGU calculation
+    store_data_dependencies = True
 
 
 class MemoryMap:

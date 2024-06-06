@@ -349,9 +349,9 @@ class Instr(sim.Component):
             ):
                 yield self.wait(self.p_sources[0].reg_state)
             else:
+                if self.pe.params.store_data_dependencies:
+                    yield self.wait(self.p_sources[0].reg_state)
                 yield self.wait(self.p_sources[1].reg_state)
-                if self.pe.ResInst.load_queue:
-                    yield self.hold(len(self.pe.ResInst.load_queue))
             # self.pe.konata_signature.print_stage(
             #     "QUE", "WUP", self.pe.thread_id, self.instr_id
             # )
