@@ -181,7 +181,7 @@ class Instr(sim.Component):
         self.release((self.pe.ResInst.ls_ordering, 1))
         yield from self.agu_issue()
         self.ls_ready.set(self.load_disambiguation())
-        yield self.hold(1)
+        # yield self.hold(1)
         yield self.wait(self.ls_ready)
         if self.promoted:
             yield from self.store_to_load_fwd()
@@ -190,11 +190,11 @@ class Instr(sim.Component):
             yield self.request(self.pe.ResInst.cache_ports)
             if self.pe.params.HPDC_store_bubble:
                 yield self.request(self.pe.ResInst.store_bubble)
-            # self.pe.konata_signature.print_stage(
-            #     "DIS", "ISS", self.pe.thread_id, self.instr_id
-            # )
-            # yield self.hold(1)  # Issue of LSU latency
             yield from self.data_cache_pipeline()
+            self.pe.konata_signature.print_stage(
+                "ISS", "CPL", self.pe.thread_id, self.instr_id
+            )
+            yield self.hold(1)  # Complete of LSU latency
         if self.pe.performance_counters.CountCtrl.is_enable():
             self.pe.performance_counters.ECInst.increase_counter("exe_loads")
 
@@ -581,18 +581,19 @@ class Instr(sim.Component):
             self.dcache_counters(latency)
         for x in range(latency):
             if (
-                self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
-                is dec.InstrLabel.LOAD
+                self.pe.params.speculate_on_load_hit
+                and (
+                    self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                    is dec.InstrLabel.LOAD
+                )
+                and (
+                    (x + self.pe.params.issue_to_exe_latency)
+                    >= (self.pe.params.dcache_load_hit_latency - 1)
+                )
             ):
                 # Execute load a wake-up dependencies 2 cycles before finishing load.
-                if (
-                    x + self.pe.params.issue_to_exe_latency
-                    == self.pe.params.dcache_load_hit_latency
-                ):
-                    if self.pe.params.speculate_on_load_hit:
-                        self.p_dest.reg_state.set(True)
-                # if x == self.pe.params.dcache_load_hit_latency - 1:
-                #     self.p_dest.reg_state.set(self.cache_hit)
+                wake_up = True
+                self.p_dest.reg_state.set(True)
             yield self.hold(1)  # Hold for mem stage
             # if (
             #     x == 0
