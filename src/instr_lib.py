@@ -200,7 +200,7 @@ class Instr(sim.Component):
 
     def store_to_load_fwd(self):
         self.psrcs_hit = False
-        self.request(self.pe.ResInst.s2l_slots)
+        yield self.request(self.pe.ResInst.s2l_slots)
         while not self.psrcs_hit:
             yield self.wait(self.store_fwd.p_sources[0].reg_state)
             # self.pe.konata_signature.print_stage(
@@ -225,20 +225,20 @@ class Instr(sim.Component):
             self.check_psrcs_hit()
             if not self.psrcs_hit:
                 self.pe.konata_signature.print_stage(
-                    "FWD", "DIS", self.pe.thread_id, self.instr_id
+                    "RRE", "LSU", self.pe.thread_id, self.instr_id
                 )
                 # self.release((self.pe.ResInst.cache_ports, 1))
                 # self.store_fwd.store_buff = False
             self.release((self.pe.ResInst.cache_ports, 1))
-        self.pe.konata_signature.print_stage(
-            "RRE", "FWD", self.pe.thread_id, self.instr_id
-        )
+        # self.pe.konata_signature.print_stage(
+        #    "RRE", "FWD", self.pe.thread_id, self.instr_id
+        # )
         # yield self.hold(1)
         self.release((self.pe.ResInst.s2l_slots, 1))
         # self.release((self.pe.ResInst.cache_ports, 1))
-        # self.pe.konata_signature.print_stage(
-        #     "FWD", "CPL", self.pe.thread_id, self.instr_id
-        # )
+        self.pe.konata_signature.print_stage(
+            "RRE", "FWD", self.pe.thread_id, self.instr_id
+        )
         yield self.hold(1)
         if self.pe.performance_counters.CountCtrl.is_enable():
             self.pe.performance_counters.ECInst.increase_counter("load_forwards")
@@ -550,35 +550,11 @@ class Instr(sim.Component):
         )
         # if self.pe.params.issue_to_exe_latency > 1 and not self.pe.params.OoO_lsu:
         #     self.release((self.pe.ResInst.cache_ports, 1))
-        self.address_align = (
-            self.address >> self.pe.params.mshr_shamt
-        ) << self.pe.params.mshr_shamt
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD:
             self.cache_store_to_load_fwd()
-            latency = self.pe.DataCacheInst.load_latency(
-                self.address_align,
-                self.decoded_fields.instr_tuple[dec.INTFields.N_BYTES],
-            )
-        else:
-            latency = self.pe.DataCacheInst.store_latency(
-                self.address_align,
-                self.decoded_fields.instr_tuple[dec.INTFields.N_BYTES],
-            )
-        self.cache_hit = (
-            latency == self.pe.params.dcache_load_hit_latency
-            or latency == self.pe.params.dcache_store_hit_latency
-        )
-        if not self.cache_hit:
-            self.pe.DataCacheInst.mshrs[self.address_align] = latency
-            self.mshr_owner = True
-        mshr_latency = self.pe.DataCacheInst.mshrs.get(self.address_align)
-        if mshr_latency:
-            self.cache_hit = False
-            latency = mshr_latency
+        latency = self.dcache_latency()
         if self.cache_hit:
             self.release((self.pe.ResInst.mshrs, 1))
-        if self.pe.performance_counters.CountCtrl.is_enable():
-            self.dcache_counters(latency)
         for x in range(latency):
             if (
                 self.pe.params.speculate_on_load_hit
@@ -592,7 +568,6 @@ class Instr(sim.Component):
                 )
             ):
                 # Execute load a wake-up dependencies 2 cycles before finishing load.
-                wake_up = True
                 self.p_dest.reg_state.set(True)
             yield self.hold(1)  # Hold for mem stage
             # if (
@@ -647,6 +622,35 @@ class Instr(sim.Component):
             if self.pe.performance_counters.CountCtrl.is_enable():
                 self.pe.performance_counters.ECInst.increase_counter("exe_stores")
             self.pe.DataCacheInst.dc_store(self.address, self.p_sources[0].value)
+
+    def dcache_latency(self):
+        self.address_align = (
+            self.address >> self.pe.params.mshr_shamt
+        ) << self.pe.params.mshr_shamt
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD:
+            latency = self.pe.DataCacheInst.load_latency(
+                self.address_align,
+                self.decoded_fields.instr_tuple[dec.INTFields.N_BYTES],
+            )
+        else:
+            latency = self.pe.DataCacheInst.store_latency(
+                self.address_align,
+                self.decoded_fields.instr_tuple[dec.INTFields.N_BYTES],
+            )
+        self.cache_hit = (
+            latency == self.pe.params.dcache_load_hit_latency
+            or latency == self.pe.params.dcache_store_hit_latency
+        )
+        if not self.cache_hit:
+            self.pe.DataCacheInst.mshrs[self.address_align] = latency
+            self.mshr_owner = True
+        mshr_latency = self.pe.DataCacheInst.mshrs.get(self.address_align)
+        if mshr_latency:
+            self.cache_hit = False
+            latency = mshr_latency
+        if self.pe.performance_counters.CountCtrl.is_enable():
+            self.dcache_counters(latency)
+        return latency
 
     def dcache_counters(self, latency):
         if self.cache_hit:
