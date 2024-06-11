@@ -2,11 +2,19 @@ import salabim as sim
 
 
 class KonataSignature(sim.Component):
-    def setup(self, konata_out, konata_dump_on, torture_out, torture_dump_on):
+    def setup(
+        self,
+        konata_out,
+        konata_dump_on,
+        torture_out,
+        torture_dump_on,
+        tracer_with_konata_id,
+    ):
         self.konata_out = konata_out
         self.konata_dump_on = konata_dump_on
         self.torture_out = torture_out
         self.torture_dump_on = torture_dump_on
+        self.tracer_with_konata_id = tracer_with_konata_id
         if self.konata_dump_on:
             self.fk = open(self.konata_out, "w")
         if self.torture_dump_on:
@@ -111,22 +119,22 @@ class KonataSignature(sim.Component):
     ):
         if type(instr_id) == int and type(thread_id) == int:
             if self.torture_dump_on:
-                try:
-                    konata_id = self.konata_ids[thread_id][instr_id]
-                except KeyError:
-                    print(
-                        "thread_id="
-                        + str(thread_id)
-                        + " and instr_id="
-                        + str(instr_id)
-                        + " Are not in the konata_ids list!!\n"
-                    )
-                    raise
+                if self.tracer_with_konata_id:
+                    try:
+                        konata_id = self.konata_ids[thread_id][instr_id]
+                    except KeyError:
+                        print(
+                            "thread_id="
+                            + str(thread_id)
+                            + " and instr_id="
+                            + str(instr_id)
+                            + " Are not in the konata_ids list!!\n"
+                        )
+                        raise
+                    knid = "k" + str(konata_id) + ": "
+                    self.ft.write(f"core    {str(thread_id)}: {knid}\n")
                 ln = "l" + str(line_number)
-                knid = "k" + str(konata_id) + ": "
-                self.ft.write(
-                    "core    " + str(thread_id) + ": " + knid + "\n" + ln + instr + "\n"
-                )
+                self.ft.write(f"{ln}{instr}\n")
                 out = ""
                 if dest:
                     out = out + " 0x" + "{:02d}".format(dest) + ": " + str(data)
