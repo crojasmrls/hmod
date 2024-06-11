@@ -54,6 +54,9 @@ class AtomicModel:
                 self.thread_id, self.instr_id, self.instr[1], self.instr[0]
             )
             # Assign registers from register file
+            self.p_sources = []
+            self.p_dest = None
+            self.srcs = None
             self.p_sources = [
                 self.RFInst.get_reg(src) for src in self.decoded_fields.sources
             ]
@@ -61,7 +64,7 @@ class AtomicModel:
                 if self.decoded_fields.dest != 0:
                     self.p_dest = self.RFInst.get_reg(self.decoded_fields.dest)
                 else:
-                    self.p_dest = self.pe.RFInst.dummy_reg
+                    self.p_dest = self.RFInst.dummy_reg
             self.srcs = [
                 (self.decoded_fields.sources[i], self.p_sources[i].value)
                 for i in range(0, len(self.decoded_fields.sources))
@@ -101,6 +104,7 @@ class AtomicModel:
             else:
                 self.bb_name = self.decoded_fields.branch_target
                 self.offset = 0
+            self.branch_result = False
         # else increase Program Counter
         elif (self.offset + 1) == self.InstrCacheInst.get_block_len(self.bb_name):
             self.bb_name = self.InstrCacheInst.get_next_block(self.bb_name)
