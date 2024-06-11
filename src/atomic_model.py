@@ -5,23 +5,29 @@ import asm_parser_lib as par
 import rv64uih_lib as dec
 
 
+class PE:
+    def __init__(self, params):
+        self.params = params
+        # Data cache
+        self.DataCacheInst = dc.DataCache(params=self.params)
+        # Instr cache
+        self.InstrCacheInst = ic.InstrCache()
+        # Register File
+        self.RFInst = rf.RegFile(physical_registers=self.params.physical_registers)
+        # Program parser and memory initialization
+        self.ASMParserInst = par.ASMParser(
+            data_cache=self.DataCacheInst, instr_cache=self.InstrCacheInst
+        )
+
+
 class AtomicModel:
     def __init__(self, params, thread_id, konata_signature):
         # Parameters
         self.params = params
         self.thread_id = thread_id
+        self.pe = PE(params)
         # Tracer
         self.konata_signature = konata_signature
-        # Register File
-        self.RFInst = rf.RegFile(physical_registers=self.params.physical_registers)
-        # Data cache
-        self.DataCacheInst = dc.DataCache(params=self.params)
-        # Instr cache
-        self.InstrCacheInst = ic.InstrCache()
-        # Program parser and memory initialization
-        self.ASMParserInst = par.ASMParser(
-            data_cache=self.DataCacheInst, instr_cache=self.InstrCacheInst
-        )
         self.instr = None
         self.decoded_fields = None
         self.bb_name = "main"
@@ -42,7 +48,7 @@ class AtomicModel:
             # Get instruction from icache
             self.instr_id += 1
             try:
-                self.instr = self.InstrCacheInst.get_instr(self.bb_name, self.offset)
+                self.instr = self.pe.InstrCacheInst.get_instr(self.bb_name, self.offset)
             except KeyError:
                 print(f"bb name:{self.bb_name}, offset: {self.offset}")
                 raise
@@ -58,13 +64,13 @@ class AtomicModel:
             self.p_dest = None
             self.srcs = None
             self.p_sources = [
-                self.RFInst.get_reg(src) for src in self.decoded_fields.sources
+                self.pe.RFInst.get_reg(src) for src in self.decoded_fields.sources
             ]
             if self.decoded_fields.instr_tuple[dec.INTFields.DEST]:
                 if self.decoded_fields.dest != 0:
-                    self.p_dest = self.RFInst.get_reg(self.decoded_fields.dest)
+                    self.p_dest = self.pe.RFInst.get_reg(self.decoded_fields.dest)
                 else:
-                    self.p_dest = self.RFInst.dummy_reg
+                    self.p_dest = self.pe.RFInst.dummy_reg
             self.srcs = [
                 (self.decoded_fields.sources[i], self.p_sources[i].value)
                 for i in range(0, len(self.decoded_fields.sources))
@@ -78,16 +84,21 @@ class AtomicModel:
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                 is dec.InstrLabel.LOAD
             ):
-                self.p_dest.value = self.DataCacheInst.dc_load(self.address)
+                self.p_dest.value = self.pe.DataCacheInst.dc_load(self.address)
             # If store execute store
             elif (
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                 is dec.InstrLabel.STORE
             ):
-                self.DataCacheInst.dc_store(self.address, self.p_sources[0].value)
+                self.pe.DataCacheInst.dc_store(self.address, self.p_sources[0].value)
             else:
                 self.address = None
                 self.data = None
+            if (
+                self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                is dec.InstrLabel.CALL
+            ):
+                dec.Calls.call_functions(self)
             # Trace dump
             self.tracer()
 
@@ -106,8 +117,8 @@ class AtomicModel:
                 self.offset = 0
             self.branch_result = False
         # else increase Program Counter
-        elif (self.offset + 1) == self.InstrCacheInst.get_block_len(self.bb_name):
-            self.bb_name = self.InstrCacheInst.get_next_block(self.bb_name)
+        elif (self.offset + 1) == self.pe.InstrCacheInst.get_block_len(self.bb_name):
+            self.bb_name = self.pe.InstrCacheInst.get_next_block(self.bb_name)
             self.offset = 0
         else:
             self.offset = self.offset + 1
