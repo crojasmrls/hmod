@@ -28,18 +28,18 @@ class KonataSignature(sim.Component):
 
     def new_instr(self, thread_id, instr_id, line, instr):
         if type(instr_id) == int and type(thread_id) == int:
+            # Thread ID and instruction ID are joint to create a unique ID identifier for the konata signature
+            self.konata_id_count += 1
+            konata_id = self.konata_id_count
+            try:
+                self.konata_ids[thread_id].append(konata_id)
+            except KeyError:
+                self.konata_ids[thread_id] = [0]
+                print("Thread id field was created")
+                self.konata_ids[thread_id].append(konata_id)
             if self.konata_dump_on:
                 if self.cycle_count != 0:
                     self.print_cycle()
-                # Thread ID and instruction ID are joint to create a unique ID identifier for the konata signature
-                self.konata_id_count += 1
-                konata_id = self.konata_id_count
-                try:
-                    self.konata_ids[thread_id].append(konata_id)
-                except KeyError:
-                    self.konata_ids[thread_id] = [0]
-                    print("Thread id field was created")
-                    self.konata_ids[thread_id].append(konata_id)
                 self.fk.write(
                     "I\t"
                     + str(konata_id)
