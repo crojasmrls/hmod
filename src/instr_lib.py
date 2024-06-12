@@ -129,7 +129,7 @@ class Instr(sim.Component):
             self.check_psrcs_hit()
             if not self.psrcs_hit:
                 self.pe.konata_signature.print_stage(
-                    "RRE", "DIS", self.pe.thread_id, self.instr_id
+                    "RRE", "ISM", self.pe.thread_id, self.instr_id
                 )
                 # Release blocking FU
                 if not self.decoded_fields.instr_tuple[dec.INTFields.PIPELINED]:
@@ -156,7 +156,7 @@ class Instr(sim.Component):
             self.check_psrcs_hit()
             if not self.psrcs_hit:
                 self.pe.konata_signature.print_stage(
-                    "RRE", "LSB", self.pe.thread_id, self.instr_id
+                    "RRE", "ISM", self.pe.thread_id, self.instr_id
                 )
         yield from self.data_cache_pipeline()
 
@@ -225,7 +225,7 @@ class Instr(sim.Component):
             self.check_psrcs_hit()
             if not self.psrcs_hit:
                 self.pe.konata_signature.print_stage(
-                    "RRE", "LSU", self.pe.thread_id, self.instr_id
+                    "RRE", "ISM", self.pe.thread_id, self.instr_id
                 )
                 # self.release((self.pe.ResInst.cache_ports, 1))
                 # self.store_fwd.store_buff = False
@@ -371,7 +371,7 @@ class Instr(sim.Component):
                 self.psrcs_hit = self.p_sources[1].reg_state.value.value
             if not self.psrcs_hit:
                 self.pe.konata_signature.print_stage(
-                    "RRE", "DIS", self.pe.thread_id, self.instr_id
+                    "RRE", "ISM", self.pe.thread_id, self.instr_id
                 )
         self.release((self.pe.ResInst.int_queue, 1))
         self.pe.konata_signature.print_stage(
@@ -387,6 +387,8 @@ class Instr(sim.Component):
         for x in self.p_sources:
             if not x.reg_state.value.value:
                 self.psrcs_hit = False
+                if self.decoded_fields.instr_tuple[dec.INTFields.DEST]:
+                    self.p_dest.reg_state.set(False)
 
     def dispatch_alloc(self):
         yield self.request(self.pe.ResInst.dispatch_ports)
@@ -439,9 +441,9 @@ class Instr(sim.Component):
                     self.release((self.pe.ResInst.int_units, 1))
 
     def read_registers(self):
-        # self.pe.konata_signature.print_stage(
-        #     "ISS", "RRE", self.pe.thread_id, self.instr_id
-        # )
+        self.pe.konata_signature.print_stage(
+            "ISS", "RRE", self.pe.thread_id, self.instr_id
+        )
         # Do computation, all the values are computed in advance
         # the issue latencies are controlled to match the pipeline latencies
         try:
@@ -470,9 +472,9 @@ class Instr(sim.Component):
         )
 
     def execution(self):
-        # self.pe.konata_signature.print_stage(
-        #     "RRE", "EXE", self.pe.thread_id, self.instr_id
-        # )
+        self.pe.konata_signature.print_stage(
+            "RRE", "EXE", self.pe.thread_id, self.instr_id
+        )
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
             if self.pe.performance_counters.CountCtrl.is_enable():
                 self.pe.performance_counters.ECInst.increase_counter("exe_branches")
@@ -555,6 +557,18 @@ class Instr(sim.Component):
         latency = self.dcache_latency()
         if self.cache_hit:
             self.release((self.pe.ResInst.mshrs, 1))
+        if (
+            self.pe.params.speculate_on_load_hit
+            and (
+                self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                is dec.InstrLabel.LOAD
+            )
+            and (
+                self.pe.params.issue_to_exe_latency
+                > self.pe.params.dcache_load_hit_latency
+            )
+        ):
+            self.p_dest.reg_state.set(True)
         for x in range(latency):
             if (
                 self.pe.params.speculate_on_load_hit
@@ -564,12 +578,18 @@ class Instr(sim.Component):
                 )
                 and (
                     (x + self.pe.params.issue_to_exe_latency)
-                    >= (self.pe.params.dcache_load_hit_latency)
+                    == (self.pe.params.dcache_load_hit_latency)
                 )
             ):
                 # Execute load a wake-up dependencies 2 cycles before finishing load.
                 self.p_dest.reg_state.set(True)
             yield self.hold(1)  # Hold for mem stage
+            if (
+                not self.cache_hit
+                and self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                is dec.InstrLabel.LOAD
+            ):
+                self.p_dest.reg_state.set(False)
             # if (
             #     x == 0
             #     and self.pe.params.issue_to_exe_latency == 1
