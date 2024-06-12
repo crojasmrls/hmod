@@ -564,7 +564,7 @@ class Instr(sim.Component):
                 )
                 and (
                     (x + self.pe.params.issue_to_exe_latency)
-                    >= (self.pe.params.dcache_load_hit_latency - 1)
+                    >= (self.pe.params.dcache_load_hit_latency)
                 )
             ):
                 # Execute load a wake-up dependencies 2 cycles before finishing load.
