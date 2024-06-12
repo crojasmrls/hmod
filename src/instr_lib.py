@@ -365,7 +365,7 @@ class Instr(sim.Component):
             if (
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                 is dec.InstrLabel.LOAD
-            ):
+            ) or self.pe.params.store_data_dependencies:
                 self.check_psrcs_hit()
             else:
                 self.psrcs_hit = self.p_sources[1].reg_state.value.value
