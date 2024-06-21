@@ -584,12 +584,13 @@ class Instr(sim.Component):
                 # Execute load a wake-up dependencies 2 cycles before finishing load.
                 self.p_dest.reg_state.set(True)
             yield self.hold(1)  # Hold for mem stage
-            if (
-                not self.cache_hit
-                and self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+            if self.pe.params.speculate_on_load_hit and (
+                self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                 is dec.InstrLabel.LOAD
             ):
                 self.p_dest.reg_state.set(False)
+                if self.cache_hit and x == latency - 1:
+                    self.p_dest.reg_state.set(True)
             # if (
             #     x == 0
             #     and self.pe.params.issue_to_exe_latency == 1
@@ -619,12 +620,6 @@ class Instr(sim.Component):
             yield self.request(self.pe.ResInst.cache_ports)
             yield self.hold(1)
             self.release((self.pe.ResInst.cache_ports, 1))
-            if (
-                self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
-                is dec.InstrLabel.LOAD
-            ):
-                self.cache_store_to_load_fwd()
-                self.p_dest.reg_state.set(True)
             self.release((self.pe.ResInst.mshrs, 1))
             self.cache_hit = True
             if self.mshr_owner:
@@ -708,10 +703,7 @@ class Instr(sim.Component):
         # self.pe.konata_signature.print_stage(
         #     "CPL", "ROB", self.pe.thread_id, self.instr_id
         # )
-        if (
-            self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD
-            and not self.pe.params.speculate_on_load_hit
-        ):
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD:
             self.p_dest.reg_state.set(True)
         # Pooling to wait rob head
         self.pe.RoBInst.store_next2commit()
