@@ -88,7 +88,7 @@ class FetchUnit(sim.Component):
                         self.offset = branch_target[1]
                 else:
                     self.pe.ResInst.branch_target.pop(0)
-                yield self.hold(3)
+                yield self.hold(self.pe.params.recovery_latency)
             # If fetch process reach end of file passivate it
             if self.bb_name == "END" and not self.pe.ResInst.miss_branch:
                 self.pe.ResInst.finished = True
