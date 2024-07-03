@@ -89,6 +89,8 @@ class ASMParser:
                 elif ".dword" in line:
                     self.data_cache.dc_store(address, self.get_int_data(line))
                     address += Bytes.DWORD.value
+                elif ".zero" in line:  # Empty memory
+                    address += self.get_int_data(line)
             if section is Sections.RODATA:
                 if ".data" in line:
                     section = Sections.DATA
@@ -100,6 +102,8 @@ class ASMParser:
                 elif ".dword" in line:
                     self.data_cache.dc_store(address, self.get_int_data(line))
                     address += Bytes.DWORD.value
+                elif ".zero" in line:  # Empty memory
+                    address += self.get_int_data(line)
             elif section is Sections.MAIN:
                 if ".-main" in line:
                     section = Sections.RODATA
