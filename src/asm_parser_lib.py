@@ -117,7 +117,7 @@ class ASMParser:
                     address = mem_map.RODATA
 
     def get_address(self, line):
-        tag = re.findall(r"\(([^$]*)\)", line)[0].split("+")[0].split()[0]
+        tag = re.findall(r"\(([^$]*)\)", line)[0].split("+")[0].split("-")[0].split()[0]
         return self.constant_dict[tag]
 
     @staticmethod
@@ -126,11 +126,22 @@ class ASMParser:
         try:
             offset = tag.split("+")[1]
         except IndexError:
+            try:
+                offset = tag.split("-")[1]
+            except IndexError:
+                return 0
+            else:
+                try:
+                    return -int(offset)
+                except ValueError:
+                    print(f"Negative offset is not a valid integer in line: {line}")
+                    return 0
             return 0
         else:
             try:
                 return int(offset)
             except ValueError:
+                print(f"Offset is not a valid integer in line: {line}")
                 return 0
 
     @staticmethod
