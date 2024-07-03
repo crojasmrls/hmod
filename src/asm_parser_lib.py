@@ -17,6 +17,11 @@ class Bytes(IntEnum):
     BYTE = 1
 
 
+class RegularExpr:
+    re_lo = r"%lo\(?(.*?)\)"
+    re_hi = r"%hi\(?(.*?)\)"
+
+
 class ASMParser:
     def __init__(self, data_cache, instr_cache):
         self.data_cache = data_cache
@@ -48,15 +53,19 @@ class ASMParser:
                 else:
                     if len(line.replace(" ", "")) != 0:
                         if "%hi" in line:
-                            address = self.get_address(line)
-                            offset = self.get_offset(line)
+                            address = self.get_address(line, RegularExpr.re_hi)
+                            offset = self.get_offset(line, RegularExpr.re_hi)
                             immediate = self.get_hi(address, offset)
-                            line = self.replace_high(line, immediate)
+                            line = self.replace_immediate(
+                                line, immediate, RegularExpr.re_hi
+                            )
                         if "%lo" in line:
-                            address = self.get_address(line)
-                            offset = self.get_offset(line)
+                            address = self.get_address(line, RegularExpr.re_lo)
+                            offset = self.get_offset(line, RegularExpr.re_lo)
                             immediate = self.get_lo(address, offset)
-                            line = self.replace_low(line, immediate)
+                            line = self.replace_immediate(
+                                line, immediate, RegularExpr.re_lo
+                            )
                         self.instr_cache.add_instr(bb_name, (line, line_number))
                         instr_count = instr_count + 1
 
@@ -120,13 +129,13 @@ class ASMParser:
                     section = Sections.TEXT
                     address = mem_map.RODATA
 
-    def get_address(self, line):
-        tag = re.findall(r"\(([^$]*)\)", line)[0].split("+")[0].split("-")[0].split()[0]
+    def get_address(self, line, re_pattern):
+        tag = re.findall(re_pattern, line)[0].split("+")[0].split("-")[0].split()[0]
         return self.constant_dict[tag]
 
     @staticmethod
-    def get_offset(line):
-        tag = re.findall(r"\(([^$]*)\)", line)[0]
+    def get_offset(line, re_pattern):
+        tag = re.findall(re_pattern, line)[0]
         try:
             offset = tag.split("+")[1]
         except IndexError:
@@ -157,12 +166,8 @@ class ASMParser:
         return str((address + offset) & 0x00000FFF)
 
     @staticmethod
-    def replace_high(line, immediate):
-        return re.sub(r"%hi\(?(.*?)\)", immediate, line)
-
-    @staticmethod
-    def replace_low(line, immediate):
-        return re.sub(r"%lo\(?(.*?)\)", immediate, line)
+    def replace_immediate(line, immediate, re_pattern):
+        return re.sub(re_pattern, immediate, line)
 
     @staticmethod
     def get_tag_name(line):
