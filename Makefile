@@ -12,10 +12,12 @@ bmarks ?=        \
 	matrix_mul	\
 	spmv	\
 	vvadd \
+	histogram \
+
 # RISCV ASM targets
 bmarks_riscv_asm  = $(addprefix $(RISCV_CEXAMPLES)/, $(addsuffix .s, $(bmarks)))
 $(bmarks_riscv_asm): $(RISCV_CEXAMPLES)/%.s: $(RISCV_CEXAMPLES)/%/ $(wildcard $(RISCV_CEXAMPLES)/common/*)
-	$(MAKE) -C $(RISCV_CEXAMPLES) $(notdir $@)
+	$(MAKE) -C $(RISCV_CEXAMPLES) bmarks=$(notdir $(basename $@))
 
 ## HMOD variables
 SRCS_PY ?= $(BASE_DIR)/src
