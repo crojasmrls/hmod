@@ -98,7 +98,7 @@ torture_dump_on = args.Tracer
 metrics_dump_on = args.Metrics
 atomic_model = args.Atomic
 if atomic_model:
-    torture_dump_on = False
+    konata_dump_on = False
     metrics_dump_on = False
 konata_out = f"{outdir}/{args.Konata_name}"
 torture_out = f"{outdir}/{args.Tracer_name}"
