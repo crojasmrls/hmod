@@ -13,6 +13,7 @@ bmarks ?=        \
 	spmv	\
 	vvadd \
 	histogram \
+	fibonacci \
 
 # RISCV ASM targets
 bmarks_riscv_asm  = $(addprefix $(RISCV_CEXAMPLES)/, $(addsuffix .s, $(bmarks)))
