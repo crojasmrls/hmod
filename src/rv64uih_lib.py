@@ -161,6 +161,8 @@ class ExeFuncts:
     @staticmethod
     def exec_true(instr):
         instr.branch_result = True
+        if instr.decoded_fields.instr_tuple[INTFields.DEST]:
+            instr.p_dest.value = (instr.bb_name, instr.offset + 1)
 
     @staticmethod
     def exec_nop(instr):
@@ -207,6 +209,7 @@ class InstructionTable:
             'ble':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_lequ),
             'beqz':   (InstrLabel.BRANCH, False,      1,        False,    True,     1,      ExeFuncts.exec_equz),
             'j':      (InstrLabel.BRANCH, False,      0,        False,    True,     1,      ExeFuncts.exec_true),
+            'jal':    (InstrLabel.BRANCH, True,       0,        False,    True,     1,      ExeFuncts.exec_true),
             'jr':     (InstrLabel.JALR,   False,      1,        False,    True,     1,      ExeFuncts.exec_true),
             # HILAR   label               destination n_sources immediate pipelined latency computation
             'new':    (InstrLabel.HILAR,  False,      0,        False,    True,     1,      ExeFuncts.exec_nop),
@@ -295,6 +298,9 @@ class DecodedFields:
                     print("NameError: Invalid source register")
                     raise
             self.branch_target = parsed_instr.pop(0)
+            if tag == "jal":
+                self.dest = IntRegisterTable.registers["ra"]
+
         # JALR fields
         if self.instr_tuple[INTFields.LABEL] is InstrLabel.JALR:
             for x in range(self.instr_tuple[INTFields.N_SOURCES]):

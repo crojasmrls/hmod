@@ -65,4 +65,4 @@ class MemoryMap:
 
 
 class RegisterInit:
-    init_reg_values = [("ra", "END"), ("sp", 0x7FFFEFFC), ("gp", 0x10008000)]
+    init_reg_values = [("ra", ("END", 0)), ("sp", 0x7FFFEFFC), ("gp", 0x10008000)]

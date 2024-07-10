@@ -511,8 +511,9 @@ class Instr(sim.Component):
                     self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                     is dec.InstrLabel.JALR
                 ):
-                    self.pe.ResInst.branch_target = [(self.p_sources[0].value, 0)]
-                    self.decoded_fields.branch_target = self.p_sources[0].value
+                    self.pe.ResInst.branch_target = [
+                        (self.p_sources[0].value[0], self.p_sources[0].value[1])
+                    ]
                 else:
                     self.pe.ResInst.branch_target = [
                         (self.decoded_fields.branch_target, 0)
