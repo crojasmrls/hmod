@@ -560,6 +560,8 @@ class Instr(sim.Component):
         #     self.release((self.pe.ResInst.cache_ports, 1))
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD:
             self.cache_store_to_load_fwd()
+        else:
+            self.pe.DataCacheInst.dc_store(self.address, self.p_sources[0].value)
         latency = self.dcache_latency()
         if self.cache_hit:
             self.release((self.pe.ResInst.mshrs, 1))
@@ -642,7 +644,6 @@ class Instr(sim.Component):
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.STORE:
             if self.pe.performance_counters.CountCtrl.is_enable():
                 self.pe.performance_counters.ECInst.increase_counter("exe_stores")
-            self.pe.DataCacheInst.dc_store(self.address, self.p_sources[0].value)
 
     def dcache_latency(self):
         self.address_align = (
