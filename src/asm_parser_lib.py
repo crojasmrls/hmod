@@ -35,6 +35,7 @@ class ASMParser:
         instr_count = 0
         lines = self.get_file_lines(program)
         line_number = 0
+        line_number_offset = 0
         section = Sections.HEAD
         for line in lines:
             line_number += 1
@@ -73,8 +74,26 @@ class ASMParser:
                             line = self.replace_immediate(
                                 line, immediate, RegularExpr.re_lo
                             )
-                        self.instr_cache.add_instr(bb_name, (line, line_number))
-                        instr_count = instr_count + 1
+                        if "call" in line:
+                            call_funct = line.replace("call", "").replace(" ", "")
+                            if call_funct in self.constant_dict:
+                                line = line.replace("call", "jal")
+                        if "tail" in line:
+                            call_funct = line.replace("tail", "").replace(" ", "")
+                            if call_funct in self.constant_dict:
+                                line = line.replace("tail", "j")
+                            else:
+                                line = line.replace("tail", "call")
+                                self.instr_cache.add_instr(
+                                    bb_name, (line, line_number + line_number_offset)
+                                )
+                                instr_count += 1
+                                line_number_offset += 1
+                                line = "jr ra"
+                        self.instr_cache.add_instr(
+                            bb_name, (line, line_number + line_number_offset)
+                        )
+                        instr_count += 1
             else:
                 if ".text" in line:
                     section = Sections.TEXT
