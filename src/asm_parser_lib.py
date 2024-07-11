@@ -74,6 +74,7 @@ class ASMParser:
                             line = self.replace_immediate(
                                 line, immediate, RegularExpr.re_lo
                             )
+                        line = line.replace("ret", "jr ra")
                         if "call" in line:
                             call_funct = line.replace("call", "").replace(" ", "")
                             if call_funct in self.constant_dict:
