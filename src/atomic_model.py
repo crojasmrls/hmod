@@ -109,8 +109,8 @@ class AtomicModel:
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                 is dec.InstrLabel.JALR
             ):
-                self.bb_name = self.p_sources[0].value
-                self.offset = 0
+                self.bb_name = self.p_sources[0].value[0]
+                self.offset = self.p_sources[0].value[1]
                 self.decoded_fields.branch_target = self.p_sources[0].value
             else:
                 self.bb_name = self.decoded_fields.branch_target

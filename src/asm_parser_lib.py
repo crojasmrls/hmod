@@ -40,18 +40,25 @@ class ASMParser:
             line_number += 1
             line = self.clean_line(line)
             # If the line is a code segment tag
-            if section is Sections.MAIN:
+            if section is Sections.TEXT:
                 if ".-main" in line:
                     break
-                if ":" in line:
+                if (
+                    ":" in line
+                    and not ".string" in line
+                    and len(self.get_tag_name(line)) != 0
+                ):
                     instr_count = 0
                     # Remove the code segment tag indicator
+                    if len(bb_name) != 0 and len(bb_name_prev) != 0:
+                        if self.instr_cache.get_block_len(bb_name) == 0:
+                            self.instr_cache.del_bb(bb_name, bb_name_prev)
+                            bb_name = bb_name_prev
+                    bb_name_prev = bb_name
                     bb_name = self.get_tag_name(line)
-                    if len(bb_name) != 0:
-                        self.instr_cache.add_bb(bb_name, bb_name_prev)
-                        bb_name_prev = bb_name
+                    self.instr_cache.add_bb(bb_name, bb_name_prev)
                 else:
-                    if len(line.replace(" ", "")) != 0:
+                    if len(line.split(".")[0].replace(" ", "")) != 0:
                         if "%hi" in line:
                             address = self.get_address(line, RegularExpr.re_hi)
                             offset = self.get_offset(line, RegularExpr.re_hi)
@@ -68,19 +75,13 @@ class ASMParser:
                             )
                         self.instr_cache.add_instr(bb_name, (line, line_number))
                         instr_count = instr_count + 1
-
             else:
-                if "main:" in line:
-                    section = Sections.MAIN
-                    instr_count = 0
-                    # Remove the code segment tag indicator
-                    bb_name = self.get_tag_name(line)
-                    self.instr_cache.add_bb(bb_name, bb_name_prev)
-                    bb_name_prev = bb_name
+                if ".text" in line:
+                    section = Sections.TEXT
         try:
             self.instr_cache.get_next_block("END")
         except KeyError:
-            self.instr_cache.add_bb("END", bb_name_prev)
+            self.instr_cache.add_bb("END", bb_name)
 
     def fill_data(self, program, mem_map):
         section = Sections.HEAD

@@ -94,12 +94,6 @@ class Instr(sim.Component):
         self.p_sources = [
             self.pe.RFInst.get_reg(src) for src in self.decoded_fields.sources
         ]
-        # Create RAT checkpoint
-        if (
-            self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
-            in dec.InstrLabel.CTRL | dec.InstrLabel.LOAD
-        ):
-            self.pe.RFInst.push_rat(self)
         # Request physical destination
         if self.decoded_fields.instr_tuple[dec.INTFields.DEST]:
             if self.decoded_fields.dest != 0:
@@ -110,6 +104,12 @@ class Instr(sim.Component):
                 self.pe.RFInst.set_reg(self.decoded_fields.dest, self.p_dest)
             else:
                 self.p_dest = self.pe.RFInst.dummy_reg
+        # Create RAT checkpoint
+        if (
+            self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+            in dec.InstrLabel.CTRL | dec.InstrLabel.LOAD
+        ):
+            self.pe.RFInst.push_rat(self)
         self.release((self.pe.ResInst.rename_resource, 1))
         self.release((self.pe.ResInst.decode_ports, 1))
         yield self.hold(1)  # Hold for renaming stage
@@ -452,7 +452,10 @@ class Instr(sim.Component):
             print("TypeError on instruction:", self.instr_id)
         # Back to back issue arithmetic of latency 1
         if (
-            self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.INT
+            not (
+                self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                is dec.InstrLabel.LOAD
+            )
             and self.decoded_fields.instr_tuple[dec.INTFields.DEST]
             and self.decoded_fields.instr_tuple[dec.INTFields.LATENCY] == 1
             or self.promoted
@@ -514,6 +517,8 @@ class Instr(sim.Component):
                     self.pe.ResInst.branch_target = [
                         (self.p_sources[0].value[0], self.p_sources[0].value[1])
                     ]
+                    # Branch target to write branch target buffer
+                    self.decoded_fields.branch_target = self.p_sources[0].value[0]
                 else:
                     self.pe.ResInst.branch_target = [
                         (self.decoded_fields.branch_target, 0)

@@ -27,6 +27,10 @@ class InstrCache:
             self.first_block = bb_name
         self.bb_dict[bb_name] = BasicInstrBlock(bb_name)
 
+    def del_bb(self, bb_name, bb_name_prev):
+        self.bb_dict[bb_name_prev].set_next_block(self.get_next_block(bb_name))
+        del self.bb_dict[bb_name]
+
     def add_instr(self, bb_name, new_instr):
         self.bb_dict[bb_name].add_instr(new_instr)
 
