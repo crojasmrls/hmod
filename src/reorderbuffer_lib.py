@@ -49,7 +49,10 @@ class ReorderBuffer:
             self.rob_list.pop()
             self.release_resources(head_instr)
             head_instr = self.rob_list[-1]
-        if head_instr.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.LOAD:
+        if (
+            head_instr.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+            is dec.InstrLabel.LOAD
+        ):
             self.rob_list.pop()
             self.release_resources(head_instr)
 

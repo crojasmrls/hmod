@@ -128,7 +128,6 @@ if atomic_model:
 
     AtomicModelInst.pe.ASMParserInst.read_program(program, mem_map_1)
     AtomicModelInst.pe.RFInst.init_regs(init_reg_values, register_table)
-    # AtomicModelInst.InstrCacheInst.print_program()
     start = time.time()
     AtomicModelInst.run()
     end = time.time()
