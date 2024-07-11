@@ -1,5 +1,8 @@
 import fetch_lib as fetch
 import resources_lib as res
+import reorderbuffer_lib as rob
+import reg_file_lib as rf
+import bp_lib as bp
 import data_cache_lib as dc
 import instr_cache_lib as ic
 import asm_parser_lib as par
@@ -16,8 +19,15 @@ class PE:
         self.thread_id = thread_id
         # Resources
         self.ResInst = res.Resources(params=self.params)
+        # Branch Predictor
+        if self.params.branch_predictor == "bimodal_predictor":
+            self.BPInst = bp.BimodalPredictor()
+        # Reorder Buffer
+        self.RoBInst = rob.ReorderBuffer()
+        # Register File
+        self.RFInst = rf.RegFile(physical_registers=self.params.physical_registers)
         # Data cache
-        self.DataCacheInst = dc.DataCache()
+        self.DataCacheInst = dc.DataCache(params=self.params)
         # Instr cache
         self.InstrCacheInst = ic.InstrCache()
         # Program parser and memory initialization
@@ -26,12 +36,6 @@ class PE:
         )
         # Fetch engine
         self.FetchUnitInst = fetch.FetchUnit(
-            instr_cache=self.InstrCacheInst,
-            params=params,
-            resources=self.ResInst,
-            thread_id=self.thread_id,
-            konata_signature=self.konata_signature,
-            performance_counters=self.performance_counters,
-            data_cache=self.DataCacheInst,
+            pe=self,
             priority=100,
         )

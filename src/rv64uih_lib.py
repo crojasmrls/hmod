@@ -112,10 +112,12 @@ class ExeFuncts:
     @staticmethod
     def exec_sll(instr):
         if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
-            instr.p_sources[0].value << instr.decoded_fields.immediate & 0x1F
+            instr.p_dest.value = instr.p_sources[0].value << (
+                instr.decoded_fields.immediate & 0x1F
+            )
         else:
-            instr.p_dest.value = (
-                instr.p_sources[0].value << instr.p_sources[1].value & 0x1F
+            instr.p_dest.value = instr.p_sources[0].value << (
+                instr.p_sources[1].value & 0x1F
             )
 
     @staticmethod
@@ -159,6 +161,8 @@ class ExeFuncts:
     @staticmethod
     def exec_true(instr):
         instr.branch_result = True
+        if instr.decoded_fields.instr_tuple[INTFields.DEST]:
+            instr.p_dest.value = (instr.bb_name, instr.offset + 1)
 
     @staticmethod
     def exec_nop(instr):
@@ -182,7 +186,7 @@ class InstructionTable:
             # INT     label               destination n_sources immediate pipelined latency computation          n_bytes
             'add':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_add),
             'sub':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sub),
-            'mul':    (InstrLabel.INT,    True,       2,        False,    True,     2,      ExeFuncts.exec_mul),
+            'mul':    (InstrLabel.INT,    True,       2,        False,    True,     3,      ExeFuncts.exec_mul),
             'sll':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sll),
             'mv':     (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_add),
             'sext.w': (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_sext, 4),
@@ -205,6 +209,7 @@ class InstructionTable:
             'ble':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_lequ),
             'beqz':   (InstrLabel.BRANCH, False,      1,        False,    True,     1,      ExeFuncts.exec_equz),
             'j':      (InstrLabel.BRANCH, False,      0,        False,    True,     1,      ExeFuncts.exec_true),
+            'jal':    (InstrLabel.BRANCH, True,       0,        False,    True,     1,      ExeFuncts.exec_true),
             'jr':     (InstrLabel.JALR,   False,      1,        False,    True,     1,      ExeFuncts.exec_true),
             # HILAR   label               destination n_sources immediate pipelined latency computation
             'new':    (InstrLabel.HILAR,  False,      0,        False,    True,     1,      ExeFuncts.exec_nop),
@@ -225,12 +230,14 @@ class DecodedFields:
         self.branch_target = None
         self.instr_tuple = None
         self.call_code = None
+        self.is_magic = False
         self.set_fields()
 
     def set_fields(self):
         parsed_instr = self.instruction.replace(",", " ").split()
+        tag = parsed_instr.pop(0)
         try:
-            self.instr_tuple = InstructionTable.Instructions[parsed_instr.pop(0)]
+            self.instr_tuple = InstructionTable.Instructions[tag]
         except KeyError:
             print("NameError: Not supported instruction")
             raise
@@ -253,6 +260,9 @@ class DecodedFields:
                 except ValueError:
                     print("NameError: Invalid immediate")
                     raise
+            if tag == "addi" and self.dest == 0:
+                self.is_magic = True
+
         # MEM parse data source or destination, addr base source and immediate
         if self.instr_tuple[INTFields.LABEL] in InstrLabel.LS:
             if self.instr_tuple[INTFields.DEST]:
@@ -288,6 +298,9 @@ class DecodedFields:
                     print("NameError: Invalid source register")
                     raise
             self.branch_target = parsed_instr.pop(0)
+            if tag == "jal":
+                self.dest = IntRegisterTable.registers["ra"]
+
         # JALR fields
         if self.instr_tuple[INTFields.LABEL] is InstrLabel.JALR:
             for x in range(self.instr_tuple[INTFields.N_SOURCES]):
@@ -310,9 +323,14 @@ class Calls:
     def call_functions(instr):
         return {
             "printf": lambda: Calls.printf_call(
-                instr.p_sources.copy(), instr.data_cache
+                instr.p_sources.copy(), instr.pe.DataCacheInst
             ),
-            "puts": lambda: Calls.puts_call(instr.p_sources.copy(), instr.data_cache),
+            "puts": lambda: Calls.puts_call(
+                instr.p_sources.copy(), instr.pe.DataCacheInst
+            ),
+            "putchar": lambda: Calls.putschar_call(
+                instr.p_sources.copy(), instr.pe.DataCacheInst
+            ),
         }.get(instr.decoded_fields.call_code, lambda: None)()
 
     @staticmethod
@@ -320,15 +338,53 @@ class Calls:
         print(Calls.replace_end_line(data_cache.dc_load(sources[0].value)))
 
     @staticmethod
+    def putschar_call(sources, data_cache):
+        print(chr(sources[0].value), end="")
+
+    @staticmethod
     def printf_call(sources, data_cache):
         text = data_cache.dc_load(sources.pop(0).value)
         while text.count("%d") != 0:
             text = text.replace("%d", str(sources.pop(0).value), 1)
-        print(Calls.replace_end_line(text))
+        print(Calls.replace_end_line(text), end="")
 
     @staticmethod
     def replace_end_line(text):
-        return text[::-1].replace("n\\", "", 1)[::-1].replace("\\n", "\n")
+        return text.replace("\\n", "\n")
+
+
+class Magics:
+    # call functions
+    @staticmethod
+    def magic_functions(instr):
+        return {
+            1: lambda: Magics.perf_count_start(
+                instr.pe.performance_counters, instr.instr_id
+            ),
+            2: lambda: Magics.perf_count_stop(
+                instr.pe.performance_counters, instr.instr_id
+            ),
+            3: lambda: Magics.perf_count_reset(
+                instr.pe.performance_counters, instr.instr_id
+            ),
+        }.get(instr.decoded_fields.immediate, lambda: None)()
+
+    @staticmethod
+    def perf_count_start(performance_counters, instr_id):
+        performance_counters.CountCtrl.enable()
+        if performance_counters.GCInst.ispassive():
+            performance_counters.GCInst.activate()
+        print("Performance counters have started with instruction id: " + str(instr_id))
+
+    @staticmethod
+    def perf_count_stop(performance_counters, instr_id):
+        performance_counters.CountCtrl.disable()
+        print("Performance counters have stopped with instruction id: " + str(instr_id))
+
+    @staticmethod
+    def perf_count_reset(performance_counters, instr_id):
+        performance_counters.ECInst.reset_counters()
+        print("Performance counters have reset with instruction id: " + str(instr_id))
 
 
 # # Not used

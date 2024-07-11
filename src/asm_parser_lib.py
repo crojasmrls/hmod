@@ -17,6 +17,11 @@ class Bytes(IntEnum):
     BYTE = 1
 
 
+class RegularExpr:
+    re_lo = r"%lo\(?(.*?)\)"
+    re_hi = r"%hi\(?(.*?)\)"
+
+
 class ASMParser:
     def __init__(self, data_cache, instr_cache):
         self.data_cache = data_cache
@@ -30,48 +35,73 @@ class ASMParser:
         instr_count = 0
         lines = self.get_file_lines(program)
         line_number = 0
+        line_number_offset = 0
         section = Sections.HEAD
         for line in lines:
             line_number += 1
             line = self.clean_line(line)
             # If the line is a code segment tag
-            if section is Sections.MAIN:
+            if section is Sections.TEXT:
                 if ".-main" in line:
                     break
-                if ":" in line:
+                if (
+                    ":" in line
+                    and not ".string" in line
+                    and len(self.get_tag_name(line)) != 0
+                ):
                     instr_count = 0
                     # Remove the code segment tag indicator
-                    bb_name = self.get_tag_name(line)
-                    if len(bb_name) != 0:
-                        self.instr_cache.add_bb(bb_name, bb_name_prev)
-                        bb_name_prev = bb_name
-                else:
-                    if len(line.replace(" ", "")) != 0:
-                        if "%hi" in line:
-                            address = self.get_address(line)
-                            offset = self.get_offset(line)
-                            immediate = self.get_hi(address, offset)
-                            line = self.replace_high(line, immediate)
-                        if "%lo" in line:
-                            address = self.get_address(line)
-                            offset = self.get_offset(line)
-                            immediate = self.get_lo(address, offset)
-                            line = self.replace_low(line, immediate)
-                        self.instr_cache.add_instr(bb_name, (line, line_number))
-                        instr_count = instr_count + 1
-
-            else:
-                if "main:" in line:
-                    section = Sections.MAIN
-                    instr_count = 0
-                    # Remove the code segment tag indicator
+                    if len(bb_name) != 0 and len(bb_name_prev) != 0:
+                        if self.instr_cache.get_block_len(bb_name) == 0:
+                            self.instr_cache.del_bb(bb_name, bb_name_prev)
+                            bb_name = bb_name_prev
+                    bb_name_prev = bb_name
                     bb_name = self.get_tag_name(line)
                     self.instr_cache.add_bb(bb_name, bb_name_prev)
-                    bb_name_prev = bb_name
+                else:
+                    if len(line.split(".")[0].replace(" ", "")) != 0:
+                        if "%hi" in line:
+                            address = self.get_address(line, RegularExpr.re_hi)
+                            offset = self.get_offset(line, RegularExpr.re_hi)
+                            immediate = self.get_hi(address, offset)
+                            line = self.replace_immediate(
+                                line, immediate, RegularExpr.re_hi
+                            )
+                        if "%lo" in line:
+                            address = self.get_address(line, RegularExpr.re_lo)
+                            offset = self.get_offset(line, RegularExpr.re_lo)
+                            immediate = self.get_lo(address, offset)
+                            line = self.replace_immediate(
+                                line, immediate, RegularExpr.re_lo
+                            )
+                        line = line.replace("ret", "jr ra")
+                        if "call" in line:
+                            call_funct = line.replace("call", "").replace(" ", "")
+                            if call_funct in self.constant_dict:
+                                line = line.replace("call", "jal")
+                        if "tail" in line:
+                            call_funct = line.replace("tail", "").replace(" ", "")
+                            if call_funct in self.constant_dict:
+                                line = line.replace("tail", "j")
+                            else:
+                                line = line.replace("tail", "call")
+                                self.instr_cache.add_instr(
+                                    bb_name, (line, line_number + line_number_offset)
+                                )
+                                instr_count += 1
+                                line_number_offset += 1
+                                line = "jr ra"
+                        self.instr_cache.add_instr(
+                            bb_name, (line, line_number + line_number_offset)
+                        )
+                        instr_count += 1
+            else:
+                if ".text" in line:
+                    section = Sections.TEXT
         try:
             self.instr_cache.get_next_block("END")
         except KeyError:
-            self.instr_cache.add_bb("END", bb_name_prev)
+            self.instr_cache.add_bb("END", bb_name)
 
     def fill_data(self, program, mem_map):
         section = Sections.HEAD
@@ -89,6 +119,8 @@ class ASMParser:
                 elif ".dword" in line:
                     self.data_cache.dc_store(address, self.get_int_data(line))
                     address += Bytes.DWORD.value
+                elif ".zero" in line:  # Empty memory
+                    address += self.get_int_data(line)
             if section is Sections.RODATA:
                 if ".data" in line:
                     section = Sections.DATA
@@ -100,6 +132,8 @@ class ASMParser:
                 elif ".dword" in line:
                     self.data_cache.dc_store(address, self.get_int_data(line))
                     address += Bytes.DWORD.value
+                elif ".zero" in line:  # Empty memory
+                    address += self.get_int_data(line)
             elif section is Sections.MAIN:
                 if ".-main" in line:
                     section = Sections.RODATA
@@ -116,21 +150,32 @@ class ASMParser:
                     section = Sections.TEXT
                     address = mem_map.RODATA
 
-    def get_address(self, line):
-        tag = re.findall(r"\(([^$]*)\)", line)[0].split("+")[0].split()[0]
+    def get_address(self, line, re_pattern):
+        tag = re.findall(re_pattern, line)[0].split("+")[0].split("-")[0].split()[0]
         return self.constant_dict[tag]
 
     @staticmethod
-    def get_offset(line):
-        tag = re.findall(r"\(([^$]*)\)", line)[0]
+    def get_offset(line, re_pattern):
+        tag = re.findall(re_pattern, line)[0]
         try:
             offset = tag.split("+")[1]
         except IndexError:
+            try:
+                offset = tag.split("-")[1]
+            except IndexError:
+                return 0
+            else:
+                try:
+                    return -int(offset)
+                except ValueError:
+                    print(f"Negative offset is not a valid integer in line: {line}")
+                    return 0
             return 0
         else:
             try:
                 return int(offset)
             except ValueError:
+                print(f"Offset is not a valid integer in line: {line}")
                 return 0
 
     @staticmethod
@@ -142,12 +187,8 @@ class ASMParser:
         return str((address + offset) & 0x00000FFF)
 
     @staticmethod
-    def replace_high(line, immediate):
-        return re.sub(r"%hi\(?(.*?)\)", immediate, line)
-
-    @staticmethod
-    def replace_low(line, immediate):
-        return re.sub(r"%lo\(?(.*?)\)", immediate, line)
+    def replace_immediate(line, immediate, re_pattern):
+        return re.sub(re_pattern, immediate, line)
 
     @staticmethod
     def get_tag_name(line):
