@@ -236,6 +236,9 @@ class DecodedFields:
         self.instr_tuple = None
         self.call_code = None
         self.is_magic = False
+        # high-level fields
+        self.object_type = None
+        self.data_type = None
         self.set_fields()
 
     def set_fields(self):
@@ -248,78 +251,58 @@ class DecodedFields:
             raise
         if self.instr_tuple[INTFields.LABEL] is InstrLabel.INT:
             if self.instr_tuple[INTFields.DEST]:
-                try:
-                    self.dest = IntRegisterTable.registers[parsed_instr.pop(0)]
-                except KeyError:
-                    print("NameError: Invalid destination register")
-                    raise
+                self.get_destination(parsed_instr.pop(0))
             for x in range(self.instr_tuple[INTFields.N_SOURCES]):
-                try:
-                    self.sources.append(IntRegisterTable.registers[parsed_instr.pop(0)])
-                except KeyError:
-                    print("NameError: Invalid source register")
-                    raise
+                self.get_source(parsed_instr.pop(0))
             if self.instr_tuple[INTFields.IMMEDIATE]:
-                try:
-                    self.immediate = int(parsed_instr.pop(0))
-                except ValueError:
-                    print("NameError: Invalid immediate")
-                    raise
+                self.get_immediate(parsed_instr.pop(0))
             if tag == "addi" and self.dest == 0:
                 self.is_magic = True
-
         # MEM parse data source or destination, addr base source and immediate
         if self.instr_tuple[INTFields.LABEL] in InstrLabel.LS:
             if self.instr_tuple[INTFields.DEST]:
-                try:
-                    self.dest = IntRegisterTable.registers[parsed_instr.pop(0)]
-                except KeyError:
-                    print("NameError: Invalid destination register")
-                    raise
+                self.get_destination(parsed_instr.pop(0))
             else:
-                try:
-                    self.sources.append(IntRegisterTable.registers[parsed_instr.pop(0)])
-                except KeyError:
-                    print("NameError: Invalid source register")
-                    raise
+                self.get_source(parsed_instr.pop(0))
             parsed_instr = parsed_instr.pop(0).replace("(", " ").split()
-            try:
-                self.immediate = int(parsed_instr.pop(0))
-            except ValueError:
-                print("NameError: Invalid immediate")
-                raise
+            self.get_immediate(parsed_instr.pop(0))
             parsed_instr = parsed_instr.pop(0).split(")")[0]
-            try:
-                self.sources.append(IntRegisterTable.registers[parsed_instr])
-            except KeyError:
-                print("NameError: Invalid source register")
-                raise
-        # Branch fields
-        if self.instr_tuple[INTFields.LABEL] is InstrLabel.BRANCH:
+            self.get_source(parsed_instr)
+        # Branch and JALR fields
+        if self.instr_tuple[INTFields.LABEL] in InstrLabel.CTRL:
             for x in range(self.instr_tuple[INTFields.N_SOURCES]):
-                try:
-                    self.sources.append(IntRegisterTable.registers[parsed_instr.pop(0)])
-                except KeyError:
-                    print("NameError: Invalid source register")
-                    raise
+                self.get_source(parsed_instr.pop(0))
+        if self.instr_tuple[INTFields.LABEL] is InstrLabel.BRANCH:
             self.branch_target = parsed_instr.pop(0)
             if tag == "jal":
                 self.dest = IntRegisterTable.registers["ra"]
-
-        # JALR fields
-        if self.instr_tuple[INTFields.LABEL] is InstrLabel.JALR:
-            for x in range(self.instr_tuple[INTFields.N_SOURCES]):
-                try:
-                    self.sources.append(IntRegisterTable.registers[parsed_instr.pop(0)])
-                except KeyError:
-                    print("NameError: Invalid source register")
-                    raise
         # System calls
         if self.instr_tuple[INTFields.LABEL] is InstrLabel.CALL:
             self.call_code = parsed_instr.pop(0)
             self.sources = [
                 IntRegisterTable.registers[i] for i in IntRegisterTable.arg_registers
             ]
+
+    def get_destination(self, parsed_field):
+        try:
+            self.dest = IntRegisterTable.registers[parsed_field]
+        except KeyError:
+            print("NameError: Invalid destination register")
+            raise
+
+    def get_source(self, parsed_field):
+        try:
+            self.sources.append(IntRegisterTable.registers[parsed_field])
+        except KeyError:
+            print("NameError: Invalid source register")
+            raise
+
+    def get_immediate(self, parsed_field):
+        try:
+            self.immediate = int(parsed_field)
+        except ValueError:
+            print("NameError: Invalid immediate")
+            raise
 
 
 class Calls:
