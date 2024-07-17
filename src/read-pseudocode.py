@@ -5,7 +5,7 @@ import salabim as sim
 import atomic_model as atm
 import pe_lib as pe
 import pipeline_parameters_1 as par1
-import rv64uih_lib as dec
+import rv64_arch_lib as dec
 import konata_lib as kon
 import counters_lib as pec
 
@@ -108,7 +108,7 @@ os.makedirs(outdir, exist_ok=True)
 params_1 = par1.PipelineParams
 mem_map_1 = par1.MemoryMap
 init_reg_values = par1.RegisterInit.init_reg_values
-register_table = dec.IntRegisterTable.registers
+register_table = dec.RegisterTable.registers
 
 env = sim.Environment(trace=False)
 

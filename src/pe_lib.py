@@ -6,6 +6,7 @@ import bp_lib as bp
 import data_cache_lib as dc
 import instr_cache_lib as ic
 import asm_parser_lib as par
+import rv64_arch_lib as dec
 
 
 class PE:
@@ -25,7 +26,10 @@ class PE:
         # Reorder Buffer
         self.RoBInst = rob.ReorderBuffer()
         # Register File
-        self.RFInst = rf.RegFile(physical_registers=self.params.physical_registers)
+        self.RFInst = rf.RegFile(
+            architectural_registers=len(dec.RegisterTable.registers),
+            physical_registers=self.params.physical_registers,
+        )
         # Data cache
         self.DataCacheInst = dc.DataCache(params=self.params)
         # Instr cache

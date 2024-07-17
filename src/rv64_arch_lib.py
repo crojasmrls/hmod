@@ -1,8 +1,9 @@
 from enum import IntEnum, Flag, auto
 
 
-class IntRegisterTable:  # Register map of the micro architecture
+class RegisterTable:  # Register map of the micro architecture
     registers = {
+        # Integer
         "zero": 0,
         "ra": 1,
         "sp": 2,
@@ -35,8 +36,60 @@ class IntRegisterTable:  # Register map of the micro architecture
         "t4": 29,
         "t5": 30,
         "t6": 31,
+        # Fp
+        "ft0": 32,
+        "ft1": 33,
+        "ft2": 34,
+        "ft3": 35,
+        "ft4": 36,
+        "ft5": 37,
+        "ft6": 38,
+        "ft7": 39,
+        "fs0": 40,
+        "fs1": 41,
+        "fa0": 42,
+        "fa1": 43,
+        "fa2": 44,
+        "fa3": 45,
+        "fa4": 46,
+        "fa5": 47,
+        "fa6": 48,
+        "fa7": 49,
+        "fs2": 50,
+        "fs3": 51,
+        "fs4": 52,
+        "fs5": 53,
+        "fs6": 54,
+        "fs7": 55,
+        "fs8": 56,
+        "fs9": 57,
+        "fs10": 58,
+        "fs11": 59,
+        "ft8": 60,
+        "ft9": 61,
+        "ft10": 62,
+        "ft11": 63,
+        # Vec
+        # CSR
     }
-    arg_registers = ["a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7"]
+    arg_registers = [
+        "a0",
+        "a1",
+        "a2",
+        "a3",
+        "a4",
+        "a5",
+        "a6",
+        "a7",
+        "fa0",
+        "fa1",
+        "fa2",
+        "fa3",
+        "fa4",
+        "fa5",
+        "fa6",
+        "fa7",
+    ]
 
 
 class InstrLabel(Flag):
@@ -275,24 +328,24 @@ class DecodedFields:
         if self.instr_tuple[INTFields.LABEL] is InstrLabel.BRANCH:
             self.branch_target = parsed_instr.pop(0)
             if tag == "jal":
-                self.dest = IntRegisterTable.registers["ra"]
+                self.dest = RegisterTable.registers["ra"]
         # System calls
         if self.instr_tuple[INTFields.LABEL] is InstrLabel.CALL:
             self.call_code = parsed_instr.pop(0)
             self.sources = [
-                IntRegisterTable.registers[i] for i in IntRegisterTable.arg_registers
+                RegisterTable.registers[i] for i in RegisterTable.arg_registers
             ]
 
     def get_destination(self, parsed_field):
         try:
-            self.dest = IntRegisterTable.registers[parsed_field]
+            self.dest = RegisterTable.registers[parsed_field]
         except KeyError:
             print("NameError: Invalid destination register")
             raise
 
     def get_source(self, parsed_field):
         try:
-            self.sources.append(IntRegisterTable.registers[parsed_field])
+            self.sources.append(RegisterTable.registers[parsed_field])
         except KeyError:
             print("NameError: Invalid source register")
             raise

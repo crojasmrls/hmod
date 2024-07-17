@@ -1,5 +1,5 @@
 import salabim as sim
-import rv64uih_lib as dec
+import rv64_arch_lib as dec
 from reg_file_lib import PhysicalRegister
 
 

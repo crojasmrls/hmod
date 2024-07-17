@@ -2,7 +2,7 @@ import reg_file_lib as rf
 import data_cache_lib as dc
 import instr_cache_lib as ic
 import asm_parser_lib as par
-import rv64uih_lib as dec
+import rv64_arch_lib as dec
 
 
 class PE:
@@ -13,7 +13,10 @@ class PE:
         # Instr cache
         self.InstrCacheInst = ic.InstrCache()
         # Register File
-        self.RFInst = rf.RegFile(physical_registers=self.params.physical_registers)
+        self.RFInst = rf.RegFile(
+            architectural_registers=len(dec.RegisterTable.registers),
+            physical_registers=self.params.physical_registers,
+        )
         # Program parser and memory initialization
         self.ASMParserInst = par.ASMParser(
             data_cache=self.DataCacheInst, instr_cache=self.InstrCacheInst

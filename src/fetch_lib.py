@@ -1,5 +1,5 @@
 import salabim as sim
-import rv64uih_lib as dec
+import rv64_arch_lib as dec
 import instr_lib as ins
 
 # from watchpoints import watch
