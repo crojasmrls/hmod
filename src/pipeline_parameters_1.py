@@ -5,6 +5,7 @@ class PipelineParams:
     fetch_width = 4
     commit_width = 4
     int_alus = 4
+    fp_alus = 2
     physical_registers = 256
     branch_units = 2
     rob_entries = 192

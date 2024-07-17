@@ -416,6 +416,8 @@ class Instr(sim.Component):
         # FU request
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.INT:
             yield self.request(self.pe.ResInst.int_units)
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.FP:
+            yield self.request(self.pe.ResInst.fp_units)
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
             yield self.request(self.pe.ResInst.branch_units)
             if self.pe.params.branch_in_int_alu:
@@ -432,6 +434,11 @@ class Instr(sim.Component):
                 is dec.InstrLabel.INT
             ):
                 self.release((self.pe.ResInst.int_units, 1))
+            if (
+                self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                is dec.InstrLabel.FP
+            ):
+                self.release((self.pe.ResInst.fp_units, 1))
             if (
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                 in dec.InstrLabel.CTRL
