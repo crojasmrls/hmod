@@ -159,6 +159,12 @@ class ExeFuncts:
         instr.p_dest.value = instr.p_sources[0].value * instr.p_sources[1].value
 
     @staticmethod
+    def exec_fmadd(instr):
+        instr.p_dest.value = (
+            instr.p_sources[0].value * instr.p_sources[1].value
+        ) + instr.p_sources[2].value
+
+    @staticmethod
     def exec_lui(instr):
         instr.p_dest.value = instr.decoded_fields.immediate << 12
 
@@ -255,9 +261,14 @@ class InstructionTable:
             'slli':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_sll),
             'slt':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_slt),
             'nop':    (InstrLabel.INT,    False,      0,        False,    True,     1,      ExeFuncts.exec_add),
+            # FP     label               destination n_sources immediate pipelined latency computation          n_bytes
+            'fmv.d.x':(InstrLabel.FP,     True,       1,        False,    True,     1,      ExeFuncts.exec_add),
+            'fmadd.d':(InstrLabel.FP,     True,       3,        False,    True,     5,      ExeFuncts.exec_fmadd),
             # MEM     label               destination n_sources immediate pipelined latency computation          n_bytes
             'sd':     (InstrLabel.STORE,  False,      2,        True,     True,     1,      ExeFuncts.exec_addr, 8),
             'ld':     (InstrLabel.LOAD,   True,       1,        True,     True,     1,      ExeFuncts.exec_addr, 8),
+            'fld':    (InstrLabel.LOAD,   True,       1,        True,     True,     1,      ExeFuncts.exec_addr, 8),
+            'fsd':    (InstrLabel.STORE,  False,      2,        True,     True,     1,      ExeFuncts.exec_addr, 8),
             # Branch  label               destination n_sources immediate pipelined latency computation
             'bne':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_nequ),
             'beq':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_equ),
