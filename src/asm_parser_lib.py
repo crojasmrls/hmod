@@ -108,6 +108,9 @@ class ASMParser:
         address = 0
         tagged = False
         lines = self.get_file_lines(program)
+        # This variables are used to intialize WORD data varaibales as DWORD
+        word_count = False
+        word_data = 0
         for line in lines:
             line = self.clean_line(line)
             if section is Sections.DATA:
@@ -129,6 +132,16 @@ class ASMParser:
                     self.constant_dict[self.get_data_tag_name(line)] = address
                 elif not tagged and ":" in line.split('"')[0]:
                     self.constant_dict[self.get_tag_name(line)] = address
+                elif ".word" in line:
+                    if word_count:
+                        word_data = (self.get_int_data(line) << 32) | word_data
+                        self.data_cache.dc_store(address, word_data)
+                        address += Bytes.DWORD.value
+                        word_count = False
+                    else:
+                        # Save 32 low bits of data
+                        word_data = self.get_int_data(line)
+                        word_count = True
                 elif ".dword" in line:
                     self.data_cache.dc_store(address, self.get_int_data(line))
                     address += Bytes.DWORD.value
