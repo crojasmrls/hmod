@@ -1,5 +1,7 @@
 from enum import IntEnum, Flag, auto
 
+import struct as st
+
 
 class RegisterTable:  # Register map of the micro architecture
     registers = {
@@ -119,20 +121,26 @@ class INTFields(IntEnum):
 
 
 class ExeFuncts:
+    @staticmethod
+    def check_fp_cast(value, dest):
+        if dest > 31 and dest < 64 and type(value) is int:
+            # Integer byte representation to floating ponit data type
+            value = st.unpack("<d", value.to_bytes(8, byteorder="little"))[0]
+        return value
+
     # Compute functions
     @staticmethod
     def exec_add(instr):
         if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
             if len(instr.decoded_fields.sources) >= 1:
-                instr.p_dest.value = (
-                    instr.p_sources[0].value + instr.decoded_fields.immediate
-                )
+                result = instr.p_sources[0].value + instr.decoded_fields.immediate
             else:
-                instr.p_dest.value = instr.decoded_fields.immediate
+                result = instr.decoded_fields.immediate
         elif len(instr.decoded_fields.sources) == 2:
-            instr.p_dest.value = instr.p_sources[0].value + instr.p_sources[1].value
+            result = instr.p_sources[0].value + instr.p_sources[1].value
         elif len(instr.decoded_fields.sources) == 1:
-            instr.p_dest.value = instr.p_sources[0].value
+            result = instr.p_sources[0].value
+        instr.p_dest.value = ExeFuncts.check_fp_cast(result, instr.decoded_fields.dest)
 
     @staticmethod
     def exec_andbit(instr):

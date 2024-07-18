@@ -219,7 +219,9 @@ class Instr(sim.Component):
             #     yield self.request(self.pe.ResInst.cache_ports)
             yield self.request(self.pe.ResInst.cache_ports)
             # self.store_fwd.store_buff = True
-            self.p_dest.value = self.store_fwd.p_sources[0].value
+            self.p_dest.value = dec.ExeFuncts.check_fp_cast(
+                self.store_fwd.p_sources[0].value, self.decoded_fields.dest
+            )
             self.p_dest.reg_state.set(True)
             yield from self.read_registers()
             self.check_psrcs_hit()
@@ -699,11 +701,12 @@ class Instr(sim.Component):
         next_store = self.pe.RoBInst.store_next(self)
         # Store to Load forwarding
         if not next_store:
-            self.p_dest.value = self.pe.DataCacheInst.dc_load(self.address)
+            value = self.pe.DataCacheInst.dc_load(self.address)
         elif next_store.address == self.address:
-            self.p_dest.value = next_store.p_sources[0].value
+            value = next_store.p_sources[0].value
         else:
-            self.p_dest.value = self.pe.DataCacheInst.dc_load(self.address)
+            value = self.pe.DataCacheInst.dc_load(self.address)
+        self.p_dest.value = dec.ExeFuncts.check_fp_cast(value, self.decoded_fields.dest)
 
     def wait_commit(self):
         self.pe.konata_signature.print_stage(

@@ -89,13 +89,10 @@ class AtomicModel:
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                 is dec.InstrLabel.LOAD
             ):
-                load_data = self.pe.DataCacheInst.dc_load(self.address)
-                if self.decoded_fields.dest > 31 and self.decoded_fields.dest < 64 and isinstance(load_data, int):
-                    # Integer byte representation to floating ponit data type
-                    load_data = st.unpack(
-                        "<d", load_data.to_bytes(8, byteorder="little")
-                    )[0]
-                self.p_dest.value = load_data
+                self.p_dest.value = dec.ExeFuncts.check_fp_cast(
+                    self.pe.DataCacheInst.dc_load(self.address),
+                    self.decoded_fields.dest,
+                )
             # If store execute store
             elif (
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
