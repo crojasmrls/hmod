@@ -4,6 +4,8 @@ import instr_cache_lib as ic
 import asm_parser_lib as par
 import rv64_arch_lib as dec
 
+import struct as st
+
 
 class PE:
     def __init__(self, params):
@@ -87,7 +89,13 @@ class AtomicModel:
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                 is dec.InstrLabel.LOAD
             ):
-                self.p_dest.value = self.pe.DataCacheInst.dc_load(self.address)
+                load_data = self.pe.DataCacheInst.dc_load(self.address)
+                if self.decoded_fields.dest > 31 and self.decoded_fields.dest < 64 and isinstance(load_data, int):
+                    # Integer byte representation to floating ponit data type
+                    load_data = st.unpack(
+                        "<d", load_data.to_bytes(8, byteorder="little")
+                    )[0]
+                self.p_dest.value = load_data
             # If store execute store
             elif (
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]

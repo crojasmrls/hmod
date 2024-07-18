@@ -394,6 +394,8 @@ class Calls:
         text = data_cache.dc_load(sources.pop(0).value)
         while text.count("%d") != 0:
             text = text.replace("%d", str(sources.pop(0).value), 1)
+        while text.count("%f") != 0:
+            text = text.replace("%f", str(sources.pop(0).value), 1)
         print(Calls.replace_end_line(text), end="")
 
     @staticmethod
