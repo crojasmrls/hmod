@@ -249,8 +249,8 @@ class DecodedFields:
         except KeyError:
             print("NameError: Not supported instruction")
             raise
-        if self.instr_tuple[INTFields.LABEL] is InstrLabel.INT:
-            if self.instr_tuple[INTFields.DEST]:
+        if self.instr_tuple[INTFields.LABEL] in InstrLabel.ARITH:
+            if self.instr_tuple[INTFields.DEST] and tag != "jal":
                 self.get_destination(parsed_instr.pop(0))
             for x in range(self.instr_tuple[INTFields.N_SOURCES]):
                 self.get_source(parsed_instr.pop(0))
@@ -268,10 +268,6 @@ class DecodedFields:
             self.get_immediate(parsed_instr.pop(0))
             parsed_instr = parsed_instr.pop(0).split(")")[0]
             self.get_source(parsed_instr)
-        # Branch and JALR fields
-        if self.instr_tuple[INTFields.LABEL] in InstrLabel.CTRL:
-            for x in range(self.instr_tuple[INTFields.N_SOURCES]):
-                self.get_source(parsed_instr.pop(0))
         if self.instr_tuple[INTFields.LABEL] is InstrLabel.BRANCH:
             self.branch_target = parsed_instr.pop(0)
             if tag == "jal":
