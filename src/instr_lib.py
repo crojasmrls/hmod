@@ -177,7 +177,7 @@ class Instr(sim.Component):
         )
         self.pe.ResInst.load_queue.append(self)
         if self.pe.ResInst.store_queue:
-            self.older_store = self.pe.ResInst.store_queue[-1]
+            self.older_store = self.pe.ResInst.store_queue.copy()
         self.release((self.pe.ResInst.ls_ordering, 1))
         yield from self.agu_issue()
         self.ls_ready.set(self.load_disambiguation())
@@ -257,7 +257,7 @@ class Instr(sim.Component):
                     self.store_fwd = store
                 else:
                     self.ls_collisions[store] = None
-            if store is self.older_store:
+            if store is self.older_store[-1]:
                 if self.ls_collisions:
                     return False
                 else:
@@ -320,7 +320,8 @@ class Instr(sim.Component):
             if not load.ls_collisions and not self.pe.params.speculate_on_younger_loads:
                 load.ls_ready.set(True)
             # load flush condition due to memory violation
-            younger_loads = self is load.older_store or younger_loads
+            if load.older_store:
+                younger_loads = self in load.older_store
             if (
                 self.pe.params.speculate_on_younger_loads
                 and not load_flush
@@ -340,8 +341,8 @@ class Instr(sim.Component):
                 del load.ls_collisions[self]
                 if not load.ls_collisions:
                     load.ls_ready.set(True)
-            if load.older_store == self:
-                load.older_store = None
+            if self in load.older_store:
+                load.older_store.remove(self)
 
     def agu_issue(self):
         while not self.psrcs_hit:
