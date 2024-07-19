@@ -1,5 +1,5 @@
 import salabim as sim
-import rv64uih_lib as dec
+import rv64_arch_lib as dec
 from reg_file_lib import PhysicalRegister
 
 
@@ -219,7 +219,9 @@ class Instr(sim.Component):
             #     yield self.request(self.pe.ResInst.cache_ports)
             yield self.request(self.pe.ResInst.cache_ports)
             # self.store_fwd.store_buff = True
-            self.p_dest.value = self.store_fwd.p_sources[0].value
+            self.p_dest.value = dec.ExeFuncts.check_fp_cast(
+                self.store_fwd.p_sources[0].value, self.decoded_fields.dest
+            )
             self.p_dest.reg_state.set(True)
             yield from self.read_registers()
             self.check_psrcs_hit()
@@ -416,6 +418,8 @@ class Instr(sim.Component):
         # FU request
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.INT:
             yield self.request(self.pe.ResInst.int_units)
+        if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] is dec.InstrLabel.FP:
+            yield self.request(self.pe.ResInst.fp_units)
         if self.decoded_fields.instr_tuple[dec.INTFields.LABEL] in dec.InstrLabel.CTRL:
             yield self.request(self.pe.ResInst.branch_units)
             if self.pe.params.branch_in_int_alu:
@@ -432,6 +436,11 @@ class Instr(sim.Component):
                 is dec.InstrLabel.INT
             ):
                 self.release((self.pe.ResInst.int_units, 1))
+            if (
+                self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
+                is dec.InstrLabel.FP
+            ):
+                self.release((self.pe.ResInst.fp_units, 1))
             if (
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                 in dec.InstrLabel.CTRL
@@ -692,11 +701,12 @@ class Instr(sim.Component):
         next_store = self.pe.RoBInst.store_next(self)
         # Store to Load forwarding
         if not next_store:
-            self.p_dest.value = self.pe.DataCacheInst.dc_load(self.address)
+            value = self.pe.DataCacheInst.dc_load(self.address)
         elif next_store.address == self.address:
-            self.p_dest.value = next_store.p_sources[0].value
+            value = next_store.p_sources[0].value
         else:
-            self.p_dest.value = self.pe.DataCacheInst.dc_load(self.address)
+            value = self.pe.DataCacheInst.dc_load(self.address)
+        self.p_dest.value = dec.ExeFuncts.check_fp_cast(value, self.decoded_fields.dest)
 
     def wait_commit(self):
         self.pe.konata_signature.print_stage(

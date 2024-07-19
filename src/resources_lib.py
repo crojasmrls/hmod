@@ -10,6 +10,7 @@ class Resources:
             "fetch_resource", capacity=self.params.fetch_width
         )
         self.int_units = sim.Resource("int_units", capacity=self.params.int_alus)
+        self.fp_units = sim.Resource("fp_units", capacity=self.params.fp_alus)
         self.branch_units = sim.Resource(
             "branch_units", capacity=self.params.branch_units
         )

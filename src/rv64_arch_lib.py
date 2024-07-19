@@ -1,8 +1,11 @@
 from enum import IntEnum, Flag, auto
 
+import struct as st
 
-class IntRegisterTable:  # Register map of the micro architecture
+
+class RegisterTable:  # Register map of the micro architecture
     registers = {
+        # Integer
         "zero": 0,
         "ra": 1,
         "sp": 2,
@@ -35,8 +38,60 @@ class IntRegisterTable:  # Register map of the micro architecture
         "t4": 29,
         "t5": 30,
         "t6": 31,
+        # Fp
+        "ft0": 32,
+        "ft1": 33,
+        "ft2": 34,
+        "ft3": 35,
+        "ft4": 36,
+        "ft5": 37,
+        "ft6": 38,
+        "ft7": 39,
+        "fs0": 40,
+        "fs1": 41,
+        "fa0": 42,
+        "fa1": 43,
+        "fa2": 44,
+        "fa3": 45,
+        "fa4": 46,
+        "fa5": 47,
+        "fa6": 48,
+        "fa7": 49,
+        "fs2": 50,
+        "fs3": 51,
+        "fs4": 52,
+        "fs5": 53,
+        "fs6": 54,
+        "fs7": 55,
+        "fs8": 56,
+        "fs9": 57,
+        "fs10": 58,
+        "fs11": 59,
+        "ft8": 60,
+        "ft9": 61,
+        "ft10": 62,
+        "ft11": 63,
+        # Vec
+        # CSR
     }
-    arg_registers = ["a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7"]
+    arg_registers = [
+        "a0",
+        "a1",
+        "a2",
+        "a3",
+        "a4",
+        "a5",
+        "a6",
+        "a7",
+        "fa0",
+        "fa1",
+        "fa2",
+        "fa3",
+        "fa4",
+        "fa5",
+        "fa6",
+        "fa7",
+    ]
 
 
 class InstrLabel(Flag):
@@ -66,20 +121,26 @@ class INTFields(IntEnum):
 
 
 class ExeFuncts:
+    @staticmethod
+    def check_fp_cast(value, dest):
+        if dest > 31 and dest < 64 and type(value) is int:
+            # Integer byte representation to floating ponit data type
+            value = st.unpack("<d", value.to_bytes(8, byteorder="little"))[0]
+        return value
+
     # Compute functions
     @staticmethod
     def exec_add(instr):
         if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
             if len(instr.decoded_fields.sources) >= 1:
-                instr.p_dest.value = (
-                    instr.p_sources[0].value + instr.decoded_fields.immediate
-                )
+                result = instr.p_sources[0].value + instr.decoded_fields.immediate
             else:
-                instr.p_dest.value = instr.decoded_fields.immediate
+                result = instr.decoded_fields.immediate
         elif len(instr.decoded_fields.sources) == 2:
-            instr.p_dest.value = instr.p_sources[0].value + instr.p_sources[1].value
+            result = instr.p_sources[0].value + instr.p_sources[1].value
         elif len(instr.decoded_fields.sources) == 1:
-            instr.p_dest.value = instr.p_sources[0].value
+            result = instr.p_sources[0].value
+        instr.p_dest.value = ExeFuncts.check_fp_cast(result, instr.decoded_fields.dest)
 
     @staticmethod
     def exec_andbit(instr):
@@ -104,6 +165,12 @@ class ExeFuncts:
     @staticmethod
     def exec_mul(instr):
         instr.p_dest.value = instr.p_sources[0].value * instr.p_sources[1].value
+
+    @staticmethod
+    def exec_fmadd(instr):
+        instr.p_dest.value = (
+            instr.p_sources[0].value * instr.p_sources[1].value
+        ) + instr.p_sources[2].value
 
     @staticmethod
     def exec_lui(instr):
@@ -202,9 +269,14 @@ class InstructionTable:
             'slli':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_sll),
             'slt':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_slt),
             'nop':    (InstrLabel.INT,    False,      0,        False,    True,     1,      ExeFuncts.exec_add),
+            # FP     label               destination n_sources immediate pipelined latency computation          n_bytes
+            'fmv.d.x':(InstrLabel.FP,     True,       1,        False,    True,     1,      ExeFuncts.exec_add),
+            'fmadd.d':(InstrLabel.FP,     True,       3,        False,    True,     5,      ExeFuncts.exec_fmadd),
             # MEM     label               destination n_sources immediate pipelined latency computation          n_bytes
             'sd':     (InstrLabel.STORE,  False,      2,        True,     True,     1,      ExeFuncts.exec_addr, 8),
             'ld':     (InstrLabel.LOAD,   True,       1,        True,     True,     1,      ExeFuncts.exec_addr, 8),
+            'fld':    (InstrLabel.LOAD,   True,       1,        True,     True,     1,      ExeFuncts.exec_addr, 8),
+            'fsd':    (InstrLabel.STORE,  False,      2,        True,     True,     1,      ExeFuncts.exec_addr, 8),
             # Branch  label               destination n_sources immediate pipelined latency computation
             'bne':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_nequ),
             'beq':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_equ),
@@ -271,24 +343,24 @@ class DecodedFields:
         if self.instr_tuple[INTFields.LABEL] is InstrLabel.BRANCH:
             self.branch_target = parsed_instr.pop(0)
             if tag == "jal":
-                self.dest = IntRegisterTable.registers["ra"]
+                self.dest = RegisterTable.registers["ra"]
         # System calls
         if self.instr_tuple[INTFields.LABEL] is InstrLabel.CALL:
             self.call_code = parsed_instr.pop(0)
             self.sources = [
-                IntRegisterTable.registers[i] for i in IntRegisterTable.arg_registers
+                RegisterTable.registers[i] for i in RegisterTable.arg_registers
             ]
 
     def get_destination(self, parsed_field):
         try:
-            self.dest = IntRegisterTable.registers[parsed_field]
+            self.dest = RegisterTable.registers[parsed_field]
         except KeyError:
             print("NameError: Invalid destination register")
             raise
 
     def get_source(self, parsed_field):
         try:
-            self.sources.append(IntRegisterTable.registers[parsed_field])
+            self.sources.append(RegisterTable.registers[parsed_field])
         except KeyError:
             print("NameError: Invalid source register")
             raise
@@ -330,6 +402,8 @@ class Calls:
         text = data_cache.dc_load(sources.pop(0).value)
         while text.count("%d") != 0:
             text = text.replace("%d", str(sources.pop(0).value), 1)
+        while text.count("%f") != 0:
+            text = text.replace("%f", str(sources.pop(0).value), 1)
         print(Calls.replace_end_line(text), end="")
 
     @staticmethod

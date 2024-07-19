@@ -2,11 +2,14 @@ import salabim as sim
 
 
 class RegFile:
-    def __init__(self, physical_registers):
+    def __init__(self, architectural_registers, physical_registers):
         self.FRL_resource = sim.Resource(
-            "FRL_resource", capacity=physical_registers - 32
+            "FRL_resource", capacity=physical_registers - architectural_registers
         )
-        self.rat = [PhysicalRegister(state=True, value=i) for i in range(32)]
+        self.rat = [
+            PhysicalRegister(state=True, value=i)
+            for i in range(architectural_registers)
+        ]
         self.rat_stack = []
         self.dummy_reg = PhysicalRegister(state=False, value=0)
 

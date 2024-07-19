@@ -10,6 +10,7 @@ bmarks ?=        \
 	bubblesort	\
 	counters	\
 	matrix_mul	\
+	fp_matrix_mul	\
 	spmv	\
 	vvadd \
 	histogram \

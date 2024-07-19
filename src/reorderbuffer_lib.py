@@ -1,4 +1,4 @@
-import rv64uih_lib as dec
+import rv64_arch_lib as dec
 
 
 class ReorderBuffer:
