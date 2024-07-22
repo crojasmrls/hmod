@@ -248,7 +248,7 @@ class Instr(sim.Component):
     def load_disambiguation(self):
         if not self.older_store:
             return True
-        for store in self.pe.ResInst.store_queue:
+        for store in self.older_store:
             if not store.address and not self.pe.params.speculate_on_younger_loads:
                 self.ls_collisions[store] = None
             elif store.address == self.address:
@@ -257,11 +257,10 @@ class Instr(sim.Component):
                     self.store_fwd = store
                 else:
                     self.ls_collisions[store] = None
-            if store is self.older_store[-1]:
-                if self.ls_collisions:
-                    return False
-                else:
-                    return True
+        if self.ls_collisions:
+            return False
+        else:
+            return True
 
     def store_queue(self):
         yield from self.dispatch_alloc()
@@ -275,7 +274,14 @@ class Instr(sim.Component):
         self.pe.ResInst.store_queue.append(self)
         self.release((self.pe.ResInst.ls_ordering, 1))
         yield from self.agu_issue()
-        self.store_disambiguation()
+        flushed_load = self.store_disambiguation()
+        if flushed_load:
+            self.fetch_unit.flushed = True
+            self.pe.ResInst.miss_branch = [True]
+            self.pe.ResInst.branch_target = [
+                (flushed_load.bb_name, flushed_load.offset)
+            ]
+            self.recovery(flushed_load)
         # Wait data ready
         yield self.wait(self.p_sources[0].reg_state)
         self.pe.konata_signature.print_stage(
@@ -306,7 +312,6 @@ class Instr(sim.Component):
         self.store_clear_collisions()
 
     def store_disambiguation(self):
-        load_flush = False
         younger_loads = False
         for load in self.pe.ResInst.load_queue:
             if self in load.ls_collisions and load.address:
@@ -324,16 +329,12 @@ class Instr(sim.Component):
                 younger_loads = self in load.older_store
             if (
                 self.pe.params.speculate_on_younger_loads
-                and not load_flush
                 and younger_loads
                 and load.ls_ready.value.value
                 and self.address == load.address
             ):
-                load_flush = True
-                self.fetch_unit.flushed = True
-                self.pe.ResInst.miss_branch = [True]
-                self.pe.ResInst.branch_target = [(load.bb_name, load.offset)]
-                self.recovery(load)
+                return load
+        return None
 
     def store_clear_collisions(self):
         for load in self.pe.ResInst.load_queue:
