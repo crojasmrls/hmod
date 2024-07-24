@@ -2,7 +2,7 @@ default: run-all
 .PHONY: default
 
 BASE_DIR ?= $(abspath .)
-PYTHON ?= python
+PYTHON ?= python3
 
 #RISCV BENCHMARKS REPOSITORY Variables
 RISCV_CEXAMPLES ?= $(BASE_DIR)/risc-v-examples/c_implementations
@@ -35,7 +35,7 @@ FLAGS_PY_ATM ?= -a -t --Tracer_name atm_torture_signature.sig
 python_logs  = $(addprefix $(LOG_DIR)/, $(addsuffix .log, $(bmarks)))
 $(python_logs): $(LOG_DIR)/%.log: $(RISCV_CEXAMPLES)/%.s $(DEPS_PY)
 	mkdir -p $(dir $@)
-	time $(PYTHON) $(MAIN_PY) $(FLAGS_PY) -o $(OUT_DIR)/$* -s $(RISCV_CEXAMPLES)/$*.s &> $@
+	time $(PYTHON) $(MAIN_PY) $(FLAGS_PY) -o $(OUT_DIR)/$* -s $(RISCV_CEXAMPLES)/$*.s > $@
 	@(echo "$(notdir $(basename $@)) finished")
 junk+=$(python_logs)
 
@@ -44,7 +44,7 @@ python_logs_atm = $(addprefix $(LOG_DIR)_atm/, $(addsuffix .log, $(bmarks)))
 
 $(python_logs_atm): $(LOG_DIR)_atm/%.log: $(RISCV_CEXAMPLES)/%.s $(DEPS_PY)
 	mkdir -p $(dir $@)
-	time $(PYTHON) $(MAIN_PY) $(FLAGS_PY_ATM) -o $(OUT_DIR)/$* -s $(RISCV_CEXAMPLES)/$*.s &> $@
+	time $(PYTHON) $(MAIN_PY) $(FLAGS_PY_ATM) -o $(OUT_DIR)/$* -s $(RISCV_CEXAMPLES)/$*.s > $@
 	@(echo "$(notdir $(basename $@)) finished")
 junk+=$(python_logs_atm)
 
