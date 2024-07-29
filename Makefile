@@ -51,7 +51,10 @@ junk+=$(python_logs_atm)
 perf_model: $(python_logs)
 atm_model: $(python_logs_atm)
 
+$(bmarks): %: $(LOG_DIR)/%.log
+$(addsuffix _atm, $(bmarks)): %_atm: $(LOG_DIR)_atm/%.log
+
 run-all: $(python_logs) $(python_logs_atm)
 clean:
 	rm -rf $(junk)
-.PHONY: default run-all clean test perf_model atm_model
+.PHONY: default run-all clean test perf_model atm_model $(bmarks) $(addsuffix _atm, $(bmarks))
