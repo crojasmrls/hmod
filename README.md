@@ -10,7 +10,35 @@ _HMOD_ is a simulator implemented in Python that permits the implementation and 
 
 ### Installation
 
-_HMOD_ relies on the [Salabim simulator](https://www.salabim.org/) to manage dependencies and resources to model the different microarchitectures. Salabim can be installed by running `pip install salabim`.
+_HMOD_ relies on the [Salabim simulator](https://www.salabim.org/) to manage dependencies and resources to model the different microarchitectures. Salabim can be installed by running `pip install salabim`. Also, as cache replacement model it uses the [Python Cache Hierarchy Simulator](https://pypi.org/project/pycachesim/) that can be installed by running `pip install pycachesim`
+
+Additionally, you will need the RISC-V toolchain to compile C code and obtain RISC-V assembly. Follow the instructions on the risc-v-examples submodule or use a docker image as indicated below.
+
+#### Docker Images
+Install docker:
+
+    sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+Check if Docker daemon is running:
+
+    sudo systemctl is-active docker
+
+If not, activate it:
+
+    sudo systemctl start docker
+
+For building a Docker image that contains the risc-v tools, you can use the included docker file.
+
+    sudo docker build -t hmod_env .
+
+Alternatively, you can download the following docker image from the docker hub.
+
+    sudo docker pull docker.io/crojasmrls/hmod_env
+
+When you have the image ready, you can create a new container using this command:
+
+    sudo docker run -it --mount src=$(pwd),target=/hmod,type=bind hmod_env
+    cd hmod
 
 ### Usage
 
