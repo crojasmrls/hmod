@@ -52,6 +52,8 @@ class AtomicModel:
         while self.bb_name != "END":
             # Get instruction from icache
             self.instr_id += 1
+            self.address = None
+            self.data = None
             try:
                 self.instr = self.pe.InstrCacheInst.get_instr(self.bb_name, self.offset)
             except KeyError:
@@ -99,9 +101,6 @@ class AtomicModel:
                 is dec.InstrLabel.STORE
             ):
                 self.pe.DataCacheInst.dc_store(self.address, self.p_sources[0].value)
-            else:
-                self.address = None
-                self.data = None
             if (
                 self.decoded_fields.instr_tuple[dec.INTFields.LABEL]
                 is dec.InstrLabel.CALL
