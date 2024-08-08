@@ -323,23 +323,23 @@ class DecodedFields:
             raise
         if self.instr_tuple[INTFields.LABEL] in InstrLabel.ARITH:
             if self.instr_tuple[INTFields.DEST] and tag != "jal":
-                self.get_destination(parsed_instr.pop(0))
+                self.dest = self.get_reg(parsed_instr.pop(0))
             for x in range(self.instr_tuple[INTFields.N_SOURCES]):
-                self.get_source(parsed_instr.pop(0))
+                self.sources.append(self.get_reg(parsed_instr.pop(0)))
             if self.instr_tuple[INTFields.IMMEDIATE]:
-                self.get_immediate(parsed_instr.pop(0))
+                self.immediate = self.get_immediate(parsed_instr.pop(0))
             if tag == "addi" and self.dest == 0:
                 self.is_magic = True
         # MEM parse data source or destination, addr base source and immediate
         if self.instr_tuple[INTFields.LABEL] in InstrLabel.LS:
             if self.instr_tuple[INTFields.DEST]:
-                self.get_destination(parsed_instr.pop(0))
+                self.dest = self.get_reg(parsed_instr.pop(0))
             else:
-                self.get_source(parsed_instr.pop(0))
+                self.sources.append(self.get_reg(parsed_instr.pop(0)))
             parsed_instr = parsed_instr.pop(0).replace("(", " ").split()
-            self.get_immediate(parsed_instr.pop(0))
+            self.immediate = self.get_immediate(parsed_instr.pop(0))
             parsed_instr = parsed_instr.pop(0).split(")")[0]
-            self.get_source(parsed_instr)
+            self.sources.append(self.get_reg(parsed_instr))
         if self.instr_tuple[INTFields.LABEL] is InstrLabel.BRANCH:
             self.branch_target = parsed_instr.pop(0)
             if tag == "jal":
@@ -351,23 +351,16 @@ class DecodedFields:
                 RegisterTable.registers[i] for i in RegisterTable.arg_registers
             ]
 
-    def get_destination(self, parsed_field):
+    def get_reg(self, parsed_field):
         try:
-            self.dest = RegisterTable.registers[parsed_field]
-        except KeyError:
-            print("NameError: Invalid destination register")
-            raise
-
-    def get_source(self, parsed_field):
-        try:
-            self.sources.append(RegisterTable.registers[parsed_field])
+            return RegisterTable.registers[parsed_field]
         except KeyError:
             print("NameError: Invalid source register")
             raise
 
     def get_immediate(self, parsed_field):
         try:
-            self.immediate = int(parsed_field)
+            return int(parsed_field)
         except ValueError:
             print("NameError: Invalid immediate")
             raise
