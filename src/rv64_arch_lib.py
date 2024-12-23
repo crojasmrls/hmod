@@ -384,7 +384,7 @@ class Calls:
 
     @staticmethod
     def puts_call(sources, data_cache):
-        print(Calls.replace_end_line(data_cache.dc_load(sources[0].value)))
+        print(Calls.replace_special_chars(data_cache.dc_load(sources[0].value)))
 
     @staticmethod
     def putschar_call(sources, data_cache):
@@ -397,11 +397,11 @@ class Calls:
             text = text.replace("%d", str(sources.pop(0).value), 1)
         while text.count("%f") != 0:
             text = text.replace("%f", str(sources.pop(0).value), 1)
-        print(Calls.replace_end_line(text), end="")
+        print(Calls.replace_special_chars(text), end="")
 
     @staticmethod
-    def replace_end_line(text):
-        return text.replace("\\n", "\n")
+    def replace_special_chars(text):
+        return text.replace("\\n", "\n").replace("\\t", "\t")
 
 
 class Magics:
