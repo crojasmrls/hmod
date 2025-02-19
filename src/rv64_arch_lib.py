@@ -270,7 +270,8 @@ class InstructionTable:
             'slt':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_slt),
             'nop':    (InstrLabel.INT,    False,      0,        False,    True,     1,      ExeFuncts.exec_add),
             # FP     label               destination n_sources immediate pipelined latency computation          n_bytes
-            'fmv.d.x':(InstrLabel.FP,     True,       1,        False,    True,     1,      ExeFuncts.exec_add),
+            'fmv.d.x':(InstrLabel.FP,     True,       1,        False,    True,     3,      ExeFuncts.exec_add),
+            'fadd.d': (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_add),
             'fmadd.d':(InstrLabel.FP,     True,       3,        False,    True,     5,      ExeFuncts.exec_fmadd),
             # MEM     label               destination n_sources immediate pipelined latency computation          n_bytes
             'sd':     (InstrLabel.STORE,  False,      2,        True,     True,     1,      ExeFuncts.exec_addr, 8),
