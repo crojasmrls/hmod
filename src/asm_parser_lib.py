@@ -119,6 +119,16 @@ class ASMParser:
                     tagged = True
                 elif not tagged and ":" in line.split('"')[0]:
                     self.constant_dict[self.get_tag_name(line)] = address
+                elif ".word" in line:
+                    if word_count:
+                        word_data = (self.get_int_data(line) << 32) | word_data
+                        self.data_cache.dc_store(address, word_data)
+                        address += Bytes.DWORD.value
+                        word_count = False
+                    else:
+                        # Save 32 low bits of data
+                        word_data = self.get_int_data(line)
+                        word_count = True
                 elif ".dword" in line:
                     self.data_cache.dc_store(address, self.get_int_data(line))
                     address += Bytes.DWORD.value
