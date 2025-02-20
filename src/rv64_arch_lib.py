@@ -271,6 +271,7 @@ class InstructionTable:
             'nop':    (InstrLabel.INT,    False,      0,        False,    True,     1,      ExeFuncts.exec_add),
             # FP     label               destination n_sources immediate pipelined latency computation          n_bytes
             'fmv.d.x':(InstrLabel.FP,     True,       1,        False,    True,     3,      ExeFuncts.exec_add),
+            'fmv.d':  (InstrLabel.FP,     True,       1,        False,    True,     3,      ExeFuncts.exec_add),
             'fadd.d': (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_add),
             'fmadd.d':(InstrLabel.FP,     True,       3,        False,    True,     5,      ExeFuncts.exec_fmadd),
             # MEM     label               destination n_sources immediate pipelined latency computation          n_bytes
@@ -282,6 +283,7 @@ class InstructionTable:
             'bne':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_nequ),
             'beq':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_equ),
             'bge':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_gequ),
+            'bgeu':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_gequ),
             'bltu':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_less),
             'bgt':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_greater),
             'ble':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_lequ),
