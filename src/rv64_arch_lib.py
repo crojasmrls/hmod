@@ -177,15 +177,34 @@ class ExeFuncts:
         instr.p_dest.value = instr.decoded_fields.immediate << 12
 
     @staticmethod
+    def exec_not(instr):
+        instr.p_dest.value = ~instr.p_sources[0].value
+
+    @staticmethod
     def exec_sll(instr):
         if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
-            instr.p_dest.value = instr.p_sources[0].value << (
-                instr.decoded_fields.immediate & 0x1F
-            )
+            shamt = instr.decoded_fields.immediate & 0x1F
         else:
-            instr.p_dest.value = instr.p_sources[0].value << (
-                instr.p_sources[1].value & 0x1F
-            )
+            shamt = instr.p_sources[1].value & 0x1F
+        instr.p_dest.value = instr.p_sources[0].value << shamt
+
+    @staticmethod
+    def exec_srl(instr):
+        if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
+            shamt = instr.decoded_fields.immediate & 0x1F
+        else:
+            shamt = instr.p_sources[1].value & 0x1F
+        instr.p_dest.value = (instr.p_sources[0].value >> shamt) & (
+            0x7FFFFFFFFFFFFFFF >> (shamt - 1)
+        )
+
+    @staticmethod
+    def exec_sra(instr):
+        if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
+            shamt = instr.decoded_fields.immediate & 0x1F
+        else:
+            shamt = instr.p_sources[1].value & 0x1F
+        instr.p_dest.value = instr.p_sources[0].value >> shamt
 
     @staticmethod
     def exec_slt(instr):
@@ -258,7 +277,6 @@ class InstructionTable:
             'add':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_add),
             'sub':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sub),
             'mul':    (InstrLabel.INT,    True,       2,        False,    True,     3,      ExeFuncts.exec_mul),
-            'sll':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sll),
             'mv':     (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_add),
             'sext.w': (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_sext, 4),
             'addi':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_add),
@@ -266,8 +284,13 @@ class InstructionTable:
             'andi':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_andbit),
             'li':     (InstrLabel.INT,    True,       0,        True,     True,     1,      ExeFuncts.exec_add),
             'lui':    (InstrLabel.INT,    True,       0,        True,     True,     1,      ExeFuncts.exec_lui),
+            'sll':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sll),
             'slli':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_sll),
+            'srli':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_srl),
+            'sra':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sra),
+            'srai':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_sra),
             'slt':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_slt),
+            'not':    (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_not),
             'nop':    (InstrLabel.INT,    False,      0,        False,    True,     1,      ExeFuncts.exec_add),
             # FP     label               destination n_sources immediate pipelined latency computation          n_bytes
             'fmv.d.x':(InstrLabel.FP,     True,       1,        False,    True,     3,      ExeFuncts.exec_add),
@@ -286,6 +309,7 @@ class InstructionTable:
             'bgeu':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_gequ),
             'bltu':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_less),
             'bgt':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_greater),
+            'bgtu':    (InstrLabel.BRANCH, False,      2,        False,    True,    1,      ExeFuncts.exec_greater),
             'ble':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_lequ),
             'bleu':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_lequ),
             'beqz':   (InstrLabel.BRANCH, False,      1,        False,    True,     1,      ExeFuncts.exec_equz),
@@ -384,7 +408,10 @@ class Calls:
             "putchar": lambda: Calls.putschar_call(
                 instr.p_sources.copy(), instr.pe.DataCacheInst
             ),
-        }.get(instr.decoded_fields.call_code, lambda: None)()
+        }.get(
+            instr.decoded_fields.call_code,
+            lambda: Calls.unsupported_call(instr.decoded_fields.call_code),
+        )()
 
     @staticmethod
     def puts_call(sources, data_cache):
@@ -402,6 +429,10 @@ class Calls:
         while text.count("%f") != 0:
             text = text.replace("%f", str(sources.pop(0).value), 1)
         print(Calls.replace_special_chars(text), end="")
+
+    @staticmethod
+    def unsupported_call(call):
+        raise (Exception(f"Unsupported Syscall: {call}"))
 
     @staticmethod
     def replace_special_chars(text):
