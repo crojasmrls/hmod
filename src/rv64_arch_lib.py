@@ -408,6 +408,9 @@ class Calls:
             "putchar": lambda: Calls.putschar_call(
                 instr.p_sources.copy(), instr.pe.DataCacheInst
             ),
+            "memset": lambda: Calls.memset_call(
+                instr.p_sources.copy(), instr.pe.DataCacheInst
+            ),
         }.get(
             instr.decoded_fields.call_code,
             lambda: Calls.unsupported_call(instr.decoded_fields.call_code),
@@ -429,6 +432,18 @@ class Calls:
         while text.count("%f") != 0:
             text = text.replace("%f", str(sources.pop(0).value), 1)
         print(Calls.replace_special_chars(text), end="")
+
+    @staticmethod  # For now only works with double word size
+    def memset_call(sources, data_cache):
+        address = sources[0].value
+        dword = sources[1].value & 0xFF
+        dword |= dword << 8
+        dword |= dword << 16
+        dword |= dword << 32
+        size = sources[2].value
+        for _ in range(int(size / 8)):
+            data_cache.dc_store(address, dword)
+            address += 8
 
     @staticmethod
     def unsupported_call(call):
