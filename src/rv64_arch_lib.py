@@ -237,6 +237,10 @@ class ExeFuncts:
         instr.branch_result = instr.p_sources[0].value == 0
 
     @staticmethod
+    def exec_nez(instr):
+        instr.branch_result = instr.p_sources[0].value != 0
+
+    @staticmethod
     def exec_less(instr):
         instr.branch_result = instr.p_sources[0].value < instr.p_sources[1].value
 
@@ -309,10 +313,11 @@ class InstructionTable:
             'bgeu':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_gequ),
             'bltu':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_less),
             'bgt':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_greater),
-            'bgtu':    (InstrLabel.BRANCH, False,      2,        False,    True,    1,      ExeFuncts.exec_greater),
+            'bgtu':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_greater),
             'ble':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_lequ),
             'bleu':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_lequ),
             'beqz':   (InstrLabel.BRANCH, False,      1,        False,    True,     1,      ExeFuncts.exec_equz),
+            'bnez':   (InstrLabel.BRANCH, False,      1,        False,    True,     1,      ExeFuncts.exec_nez),
             'j':      (InstrLabel.BRANCH, False,      0,        False,    True,     1,      ExeFuncts.exec_true),
             'jal':    (InstrLabel.BRANCH, True,       0,        False,    True,     1,      ExeFuncts.exec_true),
             'jr':     (InstrLabel.JALR,   False,      1,        False,    True,     1,      ExeFuncts.exec_true),
