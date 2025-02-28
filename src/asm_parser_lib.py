@@ -121,19 +121,28 @@ class ASMParser:
                     self.constant_dict[self.get_tag_name(line)] = address
                 elif ".word" in line:
                     if word_count:
-                        word_data = (self.get_int_data(line) << 32) | word_data
+                        word_data = (
+                            self.get_int_data(line, Bytes.WORD.value) << 32
+                        ) | word_data
                         self.data_cache.dc_store(address, word_data)
                         address += Bytes.DWORD.value
                         word_count = False
                     else:
                         # Save 32 low bits of data
-                        word_data = self.get_int_data(line)
+                        word_data = self.get_int_data(line, Bytes.WORD.value)
                         word_count = True
                 elif ".dword" in line:
-                    self.data_cache.dc_store(address, self.get_int_data(line))
+                    self.data_cache.dc_store(
+                        address, self.get_int_data(line, Bytes.DWORD.value)
+                    )
                     address += Bytes.DWORD.value
                 elif ".zero" in line:  # Zero memory
-                    for _ in range(int(self.get_int_data(line) / Bytes.DWORD.value)):
+                    for _ in range(
+                        int(
+                            self.get_int_data(line, Bytes.DWORD.value)
+                            / Bytes.DWORD.value
+                        )
+                    ):
                         self.data_cache.dc_store(address, 0)
                         address += Bytes.DWORD.value
             if section is Sections.RODATA:
@@ -146,19 +155,28 @@ class ASMParser:
                     self.constant_dict[self.get_tag_name(line)] = address
                 elif ".word" in line:
                     if word_count:
-                        word_data = (self.get_int_data(line) << 32) | word_data
+                        word_data = (
+                            self.get_int_data(line, Bytes.WORD.value) << 32
+                        ) | word_data
                         self.data_cache.dc_store(address, word_data)
                         address += Bytes.DWORD.value
                         word_count = False
                     else:
                         # Save 32 low bits of data
-                        word_data = self.get_int_data(line)
+                        word_data = self.get_int_data(line, Bytes.WORD.value)
                         word_count = True
                 elif ".dword" in line:
-                    self.data_cache.dc_store(address, self.get_int_data(line))
+                    self.data_cache.dc_store(
+                        address, self.get_int_data(line, Bytes.DWORD.value)
+                    )
                     address += Bytes.DWORD.value
                 elif ".zero" in line:  # Zero memory
-                    for _ in range(int(self.get_int_data(line) / Bytes.DWORD.value)):
+                    for _ in range(
+                        int(
+                            self.get_int_data(line, Bytes.DWORD.value)
+                            / Bytes.DWORD.value
+                        )
+                    ):
                         self.data_cache.dc_store(address, 0)
                         address += Bytes.DWORD.value
             elif section is Sections.MAIN:
@@ -197,7 +215,6 @@ class ASMParser:
                 except ValueError:
                     print(f"Negative offset is not a valid integer in line: {line}")
                     return 0
-            return 0
         else:
             try:
                 return int(offset)
@@ -230,8 +247,8 @@ class ASMParser:
         return line.split('"')[1]
 
     @staticmethod
-    def get_int_data(line):
-        return int(line.split()[1].split()[0])
+    def get_int_data(line, n_bytes):
+        return int(line.split()[1].split()[0]) & (pow(2, n_bytes << 3) - 1)
 
     @staticmethod
     def get_file_lines(program):
