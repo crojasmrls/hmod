@@ -123,7 +123,7 @@ class INTFields(IntEnum):
 class ExeFuncts:
     @staticmethod
     def check_fp_cast(value, dest):
-        if dest > 31 and dest < 64 and type(value) is int:
+        if 31 < dest < 64 and type(value) is int:
             # Integer byte representation to floating ponit data type
             value = st.unpack("<d", value.to_bytes(8, byteorder="little"))[0]
         return value
@@ -131,6 +131,7 @@ class ExeFuncts:
     # Compute functions
     @staticmethod
     def exec_add(instr):
+        result = None
         if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
             if len(instr.decoded_fields.sources) >= 1:
                 result = instr.p_sources[0].value + instr.decoded_fields.immediate
@@ -209,6 +210,13 @@ class ExeFuncts:
     @staticmethod
     def exec_slt(instr):
         if instr.p_sources[0].value < instr.p_sources[1].value:
+            instr.p_dest.value = 1
+        else:
+            instr.p_dest.value = 0
+
+    @staticmethod
+    def exec_seq(instr):
+        if instr.p_sources[0].value == instr.p_sources[1].value:
             instr.p_dest.value = 1
         else:
             instr.p_dest.value = 0
@@ -301,6 +309,7 @@ class InstructionTable:
             'fmv.d':  (InstrLabel.FP,     True,       1,        False,    True,     3,      ExeFuncts.exec_add),
             'fadd.d': (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_add),
             'fmadd.d':(InstrLabel.FP,     True,       3,        False,    True,     5,      ExeFuncts.exec_fmadd),
+            'feq.d':  (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_seq),
             # MEM     label               destination n_sources immediate pipelined latency computation          n_bytes
             'sd':     (InstrLabel.STORE,  False,      2,        True,     True,     1,      ExeFuncts.exec_addr, 8),
             'ld':     (InstrLabel.LOAD,   True,       1,        True,     True,     1,      ExeFuncts.exec_addr, 8),
@@ -311,6 +320,7 @@ class InstructionTable:
             'beq':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_equ),
             'bge':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_gequ),
             'bgeu':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_gequ),
+            'blt':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_less),
             'bltu':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_less),
             'bgt':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_greater),
             'bgtu':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_greater),
@@ -384,14 +394,16 @@ class DecodedFields:
                 RegisterTable.registers[i] for i in RegisterTable.arg_registers
             ]
 
-    def get_reg(self, parsed_field):
+    @staticmethod
+    def get_reg(parsed_field):
         try:
             return RegisterTable.registers[parsed_field]
         except KeyError:
             print("NameError: Invalid source register")
             raise
 
-    def get_immediate(self, parsed_field):
+    @staticmethod
+    def get_immediate(parsed_field):
         try:
             return int(parsed_field)
         except ValueError:
@@ -410,9 +422,7 @@ class Calls:
             "puts": lambda: Calls.puts_call(
                 instr.p_sources.copy(), instr.pe.DataCacheInst
             ),
-            "putchar": lambda: Calls.putschar_call(
-                instr.p_sources.copy(), instr.pe.DataCacheInst
-            ),
+            "putchar": lambda: Calls.putschar_call(instr.p_sources.copy()),
             "memset": lambda: Calls.memset_call(
                 instr.p_sources.copy(), instr.pe.DataCacheInst
             ),
@@ -426,7 +436,7 @@ class Calls:
         print(Calls.replace_special_chars(data_cache.dc_load(sources[0].value)))
 
     @staticmethod
-    def putschar_call(sources, data_cache):
+    def putschar_call(sources):
         print(chr(sources[0].value), end="")
 
     @staticmethod
