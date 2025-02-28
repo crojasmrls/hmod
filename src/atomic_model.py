@@ -4,8 +4,6 @@ import instr_cache_lib as ic
 import asm_parser_lib as par
 import rv64_arch_lib as dec
 
-import struct as st
-
 
 class PE:
     def __init__(self, params):
