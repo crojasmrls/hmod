@@ -123,9 +123,13 @@ class INTFields(IntEnum):
 class ExeFuncts:
     @staticmethod
     def check_fp_cast(value, dest):
+        original_value = value
         if 31 < dest < 64 and type(value) is int:
-            # Integer byte representation to floating ponit data type
+            # Integer byte representation to floating point data type
             value = st.unpack("<d", value.to_bytes(8, byteorder="little"))[0]
+        if 0 < dest < 32 and type(value) is float:
+            # Foating point data type to Integer byte representation
+            value = int.from_bytes(st.pack("<d", value), byteorder="little")
         return value
 
     # Compute functions
@@ -229,6 +233,13 @@ class ExeFuncts:
             instr.p_dest.value = 0
 
     @staticmethod
+    def exec_sge(instr):
+        if instr.p_sources[0].value >= instr.p_sources[1].value:
+            instr.p_dest.value = 1
+        else:
+            instr.p_dest.value = 0
+
+    @staticmethod
     def exec_addr(instr):
         if instr.decoded_fields.instr_tuple[INTFields.LABEL] is InstrLabel.LOAD:
             instr.address = instr.p_sources[0].value + instr.decoded_fields.immediate
@@ -312,6 +323,7 @@ class InstructionTable:
             'not':    (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_not),
             'nop':    (InstrLabel.INT,    False,      0,        False,    True,     1,      ExeFuncts.exec_add),
             # FP     label               destination n_sources immediate pipelined latency computation          n_bytes
+            'fmv.x.d':(InstrLabel.FP,     True,       1,        False,    True,     3,      ExeFuncts.exec_add),
             'fmv.d.x':(InstrLabel.FP,     True,       1,        False,    True,     3,      ExeFuncts.exec_add),
             'fmv.d':  (InstrLabel.FP,     True,       1,        False,    True,     3,      ExeFuncts.exec_add),
             'fadd.d': (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_add),
@@ -319,6 +331,7 @@ class InstructionTable:
             'feq.d':  (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_seq),
             'fgt.d':  (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_sgt),
             'flt.d':  (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_slt),
+            'fge.d':  (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_sge),
             # MEM     label               destination n_sources immediate pipelined latency computation          n_bytes
             'sd':     (InstrLabel.STORE,  False,      2,        True,     True,     1,      ExeFuncts.exec_addr, 8),
             'ld':     (InstrLabel.LOAD,   True,       1,        True,     True,     1,      ExeFuncts.exec_addr, 8),
@@ -454,7 +467,9 @@ class Calls:
         while text.count("%d") != 0:
             text = text.replace("%d", str(sources.pop(0).value), 1)
         while text.count("%f") != 0:
-            text = text.replace("%f", str(sources.pop(0).value), 1)
+            text = text.replace(
+                "%f", str(ExeFuncts.check_fp_cast(sources.pop(0).value, 32)), 1
+            )
         print(Calls.replace_special_chars(text), end="")
 
     @staticmethod  # For now only works with double word size
