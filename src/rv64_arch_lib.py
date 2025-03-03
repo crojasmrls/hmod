@@ -222,6 +222,13 @@ class ExeFuncts:
             instr.p_dest.value = 0
 
     @staticmethod
+    def exec_sgt(instr):
+        if instr.p_sources[0].value > instr.p_sources[1].value:
+            instr.p_dest.value = 1
+        else:
+            instr.p_dest.value = 0
+
+    @staticmethod
     def exec_addr(instr):
         if instr.decoded_fields.instr_tuple[INTFields.LABEL] is InstrLabel.LOAD:
             instr.address = instr.p_sources[0].value + instr.decoded_fields.immediate
@@ -310,6 +317,8 @@ class InstructionTable:
             'fadd.d': (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_add),
             'fmadd.d':(InstrLabel.FP,     True,       3,        False,    True,     5,      ExeFuncts.exec_fmadd),
             'feq.d':  (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_seq),
+            'fgt.d':  (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_sgt),
+            'flt.d':  (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_slt),
             # MEM     label               destination n_sources immediate pipelined latency computation          n_bytes
             'sd':     (InstrLabel.STORE,  False,      2,        True,     True,     1,      ExeFuncts.exec_addr, 8),
             'ld':     (InstrLabel.LOAD,   True,       1,        True,     True,     1,      ExeFuncts.exec_addr, 8),
