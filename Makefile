@@ -6,15 +6,24 @@ PYTHON ?= python3
 
 #RISCV BENCHMARKS REPOSITORY Variables
 RISCV_CEXAMPLES ?= $(BASE_DIR)/risc-v-examples/c_implementations
-bmarks ?=        \
-	bubblesort	\
-	counters	\
-	matrix_mul	\
-	fp_matrix_mul	\
-	spmv	\
-	vvadd \
+bmarks =        \
+	int-matmul \
+	int-vvadd \
+	fp-matmul \
+	fp-vvadd \
+	int-spmv \
+	fp-spmv \
 	histogram \
+	rsort \
+	int-qsort \
+	int-bsort \
+	fp-qsort \
+	fp-bsort \
+	int-median \
+	fp-median \
 	fibonacci \
+	towers \
+	#counters	\
 
 # RISCV ASM targets
 bmarks_riscv_asm  = $(addprefix $(RISCV_CEXAMPLES)/, $(addsuffix .s, $(bmarks)))
