@@ -1,6 +1,7 @@
 from enum import IntEnum, Flag, auto
 
 import struct as st
+import re
 
 
 class RegisterTable:  # Register map of the micro architecture
@@ -123,7 +124,6 @@ class INTFields(IntEnum):
 class ExeFuncts:
     @staticmethod
     def check_fp_cast(value, dest):
-        original_value = value
         if 31 < dest < 64 and type(value) is int:
             # Integer byte representation to floating point data type
             value = st.unpack("<d", value.to_bytes(8, byteorder="little"))[0]
@@ -315,6 +315,7 @@ class InstructionTable:
             'li':     (InstrLabel.INT,    True,       0,        True,     True,     1,      ExeFuncts.exec_add),
             'lui':    (InstrLabel.INT,    True,       0,        True,     True,     1,      ExeFuncts.exec_lui),
             'sll':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sll),
+            'sllw':   (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sll),
             'slli':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_sll),
             'srli':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_srl),
             'sra':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sra),
@@ -464,12 +465,12 @@ class Calls:
     @staticmethod
     def printf_call(sources, data_cache):
         text = data_cache.dc_load(sources.pop(0).value)
-        while text.count("%d") != 0:
-            text = text.replace("%d", str(sources.pop(0).value), 1)
-        while text.count("%f") != 0:
-            text = text.replace(
-                "%f", str(ExeFuncts.check_fp_cast(sources.pop(0).value, 32)), 1
-            )
+        for match in re.findall(r"(%ld|%d|%f)", text):
+            if match == "%f":
+                value = str(ExeFuncts.check_fp_cast(sources.pop(0).value, 32))
+            else:
+                value = str(sources.pop(0).value)
+            text = text.replace(match, value, 1)
         print(Calls.replace_special_chars(text), end="")
 
     @staticmethod  # For now only works with double word size
