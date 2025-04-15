@@ -36,7 +36,7 @@ MAIN_PY ?= $(SRCS_PY)/read-pseudocode.py
 DEPS_PY = $(wildcard $(SRCS_PY)/*.py)
 OUT_DIR ?= $(BASE_DIR)/outputs
 LOG_DIR ?= $(OUT_DIR)/logs
-MAX_CYCLES ?= 1000000
+MAX_CYCLES ?= 10000000
 FLAGS_PY ?= -k -t -m -c $(MAX_CYCLES)
 FLAGS_PY_ATM ?= -a -t --Tracer_name atm_torture_signature.sig
 
