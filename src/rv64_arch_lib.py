@@ -161,6 +161,10 @@ class ExeFuncts:
         instr.p_dest.value = instr.p_sources[0].value - instr.p_sources[1].value
 
     @staticmethod
+    def exec_or(instr):
+        instr.p_dest.value = instr.p_sources[0].value | instr.p_sources[1].value
+
+    @staticmethod
     def exec_sext(instr):
         instr.p_dest.value = ExeFuncts.sing_extend(
             instr.p_sources[0].value,
@@ -306,6 +310,7 @@ class InstructionTable:
             # INT     label               destination n_sources immediate pipelined latency computation          n_bytes
             'add':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_add),
             'sub':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sub),
+            'or':     (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_or),
             'mul':    (InstrLabel.INT,    True,       2,        False,    True,     3,      ExeFuncts.exec_mul),
             'mv':     (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_add),
             'sext.w': (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_sext, 4),
@@ -327,8 +332,8 @@ class InstructionTable:
             'fmv.x.d':(InstrLabel.FP,     True,       1,        False,    True,     3,      ExeFuncts.exec_add),
             'fmv.d.x':(InstrLabel.FP,     True,       1,        False,    True,     3,      ExeFuncts.exec_add),
             'fmv.d':  (InstrLabel.FP,     True,       1,        False,    True,     3,      ExeFuncts.exec_add),
-            'fadd.d': (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_add),
-            'fmadd.d':(InstrLabel.FP,     True,       3,        False,    True,     5,      ExeFuncts.exec_fmadd),
+            'fadd.d': (InstrLabel.FP,     True,       2,        False,    True,     7,      ExeFuncts.exec_add),
+            'fmadd.d':(InstrLabel.FP,     True,       3,        False,    True,     7,      ExeFuncts.exec_fmadd),
             'feq.d':  (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_seq),
             'fgt.d':  (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_sgt),
             'flt.d':  (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_slt),
