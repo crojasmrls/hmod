@@ -1,6 +1,7 @@
 from enum import IntEnum, Flag, auto
 
 import struct as st
+import re
 
 
 class RegisterTable:  # Register map of the micro architecture
@@ -123,14 +124,18 @@ class INTFields(IntEnum):
 class ExeFuncts:
     @staticmethod
     def check_fp_cast(value, dest):
-        if dest > 31 and dest < 64 and type(value) is int:
-            # Integer byte representation to floating ponit data type
+        if 31 < dest < 64 and type(value) is int:
+            # Integer byte representation to floating point data type
             value = st.unpack("<d", value.to_bytes(8, byteorder="little"))[0]
+        if 0 < dest < 32 and type(value) is float:
+            # Foating point data type to Integer byte representation
+            value = int.from_bytes(st.pack("<d", value), byteorder="little")
         return value
 
     # Compute functions
     @staticmethod
     def exec_add(instr):
+        result = None
         if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
             if len(instr.decoded_fields.sources) >= 1:
                 result = instr.p_sources[0].value + instr.decoded_fields.immediate
@@ -156,6 +161,10 @@ class ExeFuncts:
         instr.p_dest.value = instr.p_sources[0].value - instr.p_sources[1].value
 
     @staticmethod
+    def exec_or(instr):
+        instr.p_dest.value = instr.p_sources[0].value | instr.p_sources[1].value
+
+    @staticmethod
     def exec_sext(instr):
         instr.p_dest.value = ExeFuncts.sing_extend(
             instr.p_sources[0].value,
@@ -177,19 +186,59 @@ class ExeFuncts:
         instr.p_dest.value = instr.decoded_fields.immediate << 12
 
     @staticmethod
+    def exec_not(instr):
+        instr.p_dest.value = ~instr.p_sources[0].value
+
+    @staticmethod
     def exec_sll(instr):
         if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
-            instr.p_dest.value = instr.p_sources[0].value << (
-                instr.decoded_fields.immediate & 0x1F
-            )
+            shamt = instr.decoded_fields.immediate & 0x1F
         else:
-            instr.p_dest.value = instr.p_sources[0].value << (
-                instr.p_sources[1].value & 0x1F
-            )
+            shamt = instr.p_sources[1].value & 0x1F
+        instr.p_dest.value = instr.p_sources[0].value << shamt
+
+    @staticmethod
+    def exec_srl(instr):
+        if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
+            shamt = instr.decoded_fields.immediate & 0x1F
+        else:
+            shamt = instr.p_sources[1].value & 0x1F
+        instr.p_dest.value = (instr.p_sources[0].value >> shamt) & (
+            0x7FFFFFFFFFFFFFFF >> (shamt - 1)
+        )
+
+    @staticmethod
+    def exec_sra(instr):
+        if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
+            shamt = instr.decoded_fields.immediate & 0x1F
+        else:
+            shamt = instr.p_sources[1].value & 0x1F
+        instr.p_dest.value = instr.p_sources[0].value >> shamt
 
     @staticmethod
     def exec_slt(instr):
         if instr.p_sources[0].value < instr.p_sources[1].value:
+            instr.p_dest.value = 1
+        else:
+            instr.p_dest.value = 0
+
+    @staticmethod
+    def exec_seq(instr):
+        if instr.p_sources[0].value == instr.p_sources[1].value:
+            instr.p_dest.value = 1
+        else:
+            instr.p_dest.value = 0
+
+    @staticmethod
+    def exec_sgt(instr):
+        if instr.p_sources[0].value > instr.p_sources[1].value:
+            instr.p_dest.value = 1
+        else:
+            instr.p_dest.value = 0
+
+    @staticmethod
+    def exec_sge(instr):
+        if instr.p_sources[0].value >= instr.p_sources[1].value:
             instr.p_dest.value = 1
         else:
             instr.p_dest.value = 0
@@ -216,6 +265,10 @@ class ExeFuncts:
     @staticmethod
     def exec_equz(instr):
         instr.branch_result = instr.p_sources[0].value == 0
+
+    @staticmethod
+    def exec_nez(instr):
+        instr.branch_result = instr.p_sources[0].value != 0
 
     @staticmethod
     def exec_less(instr):
@@ -257,8 +310,8 @@ class InstructionTable:
             # INT     label               destination n_sources immediate pipelined latency computation          n_bytes
             'add':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_add),
             'sub':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sub),
+            'or':     (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_or),
             'mul':    (InstrLabel.INT,    True,       2,        False,    True,     3,      ExeFuncts.exec_mul),
-            'sll':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sll),
             'mv':     (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_add),
             'sext.w': (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_sext, 4),
             'addi':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_add),
@@ -266,12 +319,25 @@ class InstructionTable:
             'andi':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_andbit),
             'li':     (InstrLabel.INT,    True,       0,        True,     True,     1,      ExeFuncts.exec_add),
             'lui':    (InstrLabel.INT,    True,       0,        True,     True,     1,      ExeFuncts.exec_lui),
+            'sll':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sll),
+            'sllw':   (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sll),
             'slli':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_sll),
+            'srli':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_srl),
+            'sra':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_sra),
+            'srai':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_sra),
             'slt':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_slt),
+            'not':    (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_not),
             'nop':    (InstrLabel.INT,    False,      0,        False,    True,     1,      ExeFuncts.exec_add),
             # FP     label               destination n_sources immediate pipelined latency computation          n_bytes
-            'fmv.d.x':(InstrLabel.FP,     True,       1,        False,    True,     1,      ExeFuncts.exec_add),
-            'fmadd.d':(InstrLabel.FP,     True,       3,        False,    True,     5,      ExeFuncts.exec_fmadd),
+            'fmv.x.d':(InstrLabel.FP,     True,       1,        False,    True,     3,      ExeFuncts.exec_add),
+            'fmv.d.x':(InstrLabel.FP,     True,       1,        False,    True,     3,      ExeFuncts.exec_add),
+            'fmv.d':  (InstrLabel.FP,     True,       1,        False,    True,     3,      ExeFuncts.exec_add),
+            'fadd.d': (InstrLabel.FP,     True,       2,        False,    True,     7,      ExeFuncts.exec_add),
+            'fmadd.d':(InstrLabel.FP,     True,       3,        False,    True,     7,      ExeFuncts.exec_fmadd),
+            'feq.d':  (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_seq),
+            'fgt.d':  (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_sgt),
+            'flt.d':  (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_slt),
+            'fge.d':  (InstrLabel.FP,     True,       2,        False,    True,     3,      ExeFuncts.exec_sge),
             # MEM     label               destination n_sources immediate pipelined latency computation          n_bytes
             'sd':     (InstrLabel.STORE,  False,      2,        True,     True,     1,      ExeFuncts.exec_addr, 8),
             'ld':     (InstrLabel.LOAD,   True,       1,        True,     True,     1,      ExeFuncts.exec_addr, 8),
@@ -281,11 +347,15 @@ class InstructionTable:
             'bne':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_nequ),
             'beq':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_equ),
             'bge':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_gequ),
+            'bgeu':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_gequ),
+            'blt':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_less),
             'bltu':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_less),
             'bgt':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_greater),
+            'bgtu':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_greater),
             'ble':    (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_lequ),
             'bleu':   (InstrLabel.BRANCH, False,      2,        False,    True,     1,      ExeFuncts.exec_lequ),
             'beqz':   (InstrLabel.BRANCH, False,      1,        False,    True,     1,      ExeFuncts.exec_equz),
+            'bnez':   (InstrLabel.BRANCH, False,      1,        False,    True,     1,      ExeFuncts.exec_nez),
             'j':      (InstrLabel.BRANCH, False,      0,        False,    True,     1,      ExeFuncts.exec_true),
             'jal':    (InstrLabel.BRANCH, True,       0,        False,    True,     1,      ExeFuncts.exec_true),
             'jr':     (InstrLabel.JALR,   False,      1,        False,    True,     1,      ExeFuncts.exec_true),
@@ -352,14 +422,16 @@ class DecodedFields:
                 RegisterTable.registers[i] for i in RegisterTable.arg_registers
             ]
 
-    def get_reg(self, parsed_field):
+    @staticmethod
+    def get_reg(parsed_field):
         try:
             return RegisterTable.registers[parsed_field]
         except KeyError:
             print("NameError: Invalid source register")
             raise
 
-    def get_immediate(self, parsed_field):
+    @staticmethod
+    def get_immediate(parsed_field):
         try:
             return int(parsed_field)
         except ValueError:
@@ -378,27 +450,49 @@ class Calls:
             "puts": lambda: Calls.puts_call(
                 instr.p_sources.copy(), instr.pe.DataCacheInst
             ),
-            "putchar": lambda: Calls.putschar_call(
+            "putchar": lambda: Calls.putschar_call(instr.p_sources.copy()),
+            "memset": lambda: Calls.memset_call(
                 instr.p_sources.copy(), instr.pe.DataCacheInst
             ),
-        }.get(instr.decoded_fields.call_code, lambda: None)()
+        }.get(
+            instr.decoded_fields.call_code,
+            lambda: Calls.unsupported_call(instr.decoded_fields.call_code),
+        )()
 
     @staticmethod
     def puts_call(sources, data_cache):
         print(Calls.replace_special_chars(data_cache.dc_load(sources[0].value)))
 
     @staticmethod
-    def putschar_call(sources, data_cache):
+    def putschar_call(sources):
         print(chr(sources[0].value), end="")
 
     @staticmethod
     def printf_call(sources, data_cache):
         text = data_cache.dc_load(sources.pop(0).value)
-        while text.count("%d") != 0:
-            text = text.replace("%d", str(sources.pop(0).value), 1)
-        while text.count("%f") != 0:
-            text = text.replace("%f", str(sources.pop(0).value), 1)
+        for match in re.findall(r"(%ld|%d|%f)", text):
+            if match == "%f":
+                value = str(ExeFuncts.check_fp_cast(sources.pop(0).value, 32))
+            else:
+                value = str(sources.pop(0).value)
+            text = text.replace(match, value, 1)
         print(Calls.replace_special_chars(text), end="")
+
+    @staticmethod  # For now only works with double word size
+    def memset_call(sources, data_cache):
+        address = sources[0].value
+        dword = sources[1].value & 0xFF
+        dword |= dword << 8
+        dword |= dword << 16
+        dword |= dword << 32
+        size = sources[2].value
+        for _ in range(int(size / 8)):
+            data_cache.dc_store(address, dword)
+            address += 8
+
+    @staticmethod
+    def unsupported_call(call):
+        raise (Exception(f"Unsupported Syscall: {call}"))
 
     @staticmethod
     def replace_special_chars(text):

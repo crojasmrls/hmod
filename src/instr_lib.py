@@ -597,7 +597,7 @@ class Instr(sim.Component):
                 )
                 and (
                     (x + self.pe.params.issue_to_exe_latency)
-                    == (self.pe.params.dcache_load_hit_latency)
+                    == self.pe.params.dcache_load_hit_latency
                 )
             ):
                 # Execute load a wake-up dependencies 2 cycles before finishing load.
@@ -617,7 +617,13 @@ class Instr(sim.Component):
             # ):
             #     self.release((self.pe.ResInst.cache_ports, 1))
             if self.mshr_owner and x > 2:
-                self.pe.DataCacheInst.mshrs[self.address_align] -= 1
+                try:
+                    self.pe.DataCacheInst.mshrs[self.address_align] -= 1
+                except KeyError:
+                    print(
+                        f"Invalid mshr access!!\n ID: {self.instr_id}, instr: {self.decoded_fields.instruction}, line: {self.decoded_fields.line_number}"
+                    )
+                    raise
             if x == 0:
                 if self.pe.params.HPDC_store_bubble:
                     if (

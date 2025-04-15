@@ -6,15 +6,24 @@ PYTHON ?= python3
 
 #RISCV BENCHMARKS REPOSITORY Variables
 RISCV_CEXAMPLES ?= $(BASE_DIR)/risc-v-examples/c_implementations
-bmarks ?=        \
-	bubblesort	\
-	counters	\
-	matrix_mul	\
-	fp_matrix_mul	\
-	spmv	\
-	vvadd \
+bmarks =        \
+	int-matmul \
+	int-vvadd \
+	fp-matmul \
+	fp-vvadd \
+	int-spmv \
+	fp-spmv \
 	histogram \
+	rsort \
+	int-qsort \
+	int-bsort \
+	fp-qsort \
+	fp-bsort \
+	int-median \
+	fp-median \
 	fibonacci \
+	towers \
+	#counters	\
 
 # RISCV ASM targets
 bmarks_riscv_asm  = $(addprefix $(RISCV_CEXAMPLES)/, $(addsuffix .s, $(bmarks)))
@@ -27,7 +36,7 @@ MAIN_PY ?= $(SRCS_PY)/read-pseudocode.py
 DEPS_PY = $(wildcard $(SRCS_PY)/*.py)
 OUT_DIR ?= $(BASE_DIR)/outputs
 LOG_DIR ?= $(OUT_DIR)/logs
-MAX_CYCLES ?= 1000000
+MAX_CYCLES ?= 10000000
 FLAGS_PY ?= -k -t -m -c $(MAX_CYCLES)
 FLAGS_PY_ATM ?= -a -t --Tracer_name atm_torture_signature.sig
 
