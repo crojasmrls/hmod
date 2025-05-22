@@ -680,7 +680,7 @@ class Instr(sim.Component):
             latency == self.pe.params.dcache_load_hit_latency
             or latency == self.pe.params.dcache_store_hit_latency
         )
-        if not self.cache_hit:
+        if not self.cache_hit and self.address_align not in self.pe.DataCacheInst.mshrs:
             self.pe.DataCacheInst.mshrs[self.address_align] = latency
             self.mshr_owner = True
         mshr_latency = self.pe.DataCacheInst.mshrs.get(self.address_align)
