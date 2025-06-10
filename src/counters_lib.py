@@ -70,14 +70,14 @@ class PerformanceCounters:
             "Dcache misses",
             "Dcache hit rate",
             "Load forwards",
-            # "L2 requests",
-            # "L2 hits",
-            # "L2 misses",
-            # "L2 hit rate",
-            # "L3 requests",
-            # "L3 hits",
-            # "L3 misses",
-            # "L3 hit rate",
+            "L2 requests",
+            "L2 hits",
+            "L2 misses",
+            "L2 hit rate",
+            "L3 requests",
+            "L3 hits",
+            "L3 misses",
+            "L3 hit rate",
         ]
         self.ECInst = EventCounters()
         self.CountCtrl = CountersControl()
@@ -156,22 +156,22 @@ class PerformanceCounters:
             )
             * 100,
             "Load forwards": lambda: self.ECInst.read_counter("load_forwards"),
-            # "L2 requests": lambda: self.ECInst.read_counter("l2_hits")
-            # + self.ECInst.read_counter("l2_misses"),
-            # "L2 hits": lambda: self.ECInst.read_counter("l2_hits"),
-            # "L2 misses": lambda: self.ECInst.read_counter("l2_misses"),
-            # "L2 hit rate": lambda: (
-            #     self.ECInst.read_counter("l2_hits")
-            #     / self.metric_functions("L2 requests")
-            # )
-            # * 100,
-            # "L3 requests": lambda: self.ECInst.read_counter("l3_hits")
-            # + self.ECInst.read_counter("l3_misses"),
-            # "L3 hits": lambda: self.ECInst.read_counter("l3_hits"),
-            # "L3 misses": lambda: self.ECInst.read_counter("l3_misses"),
-            # "L3 hit rate": lambda: (
-            #     self.ECInst.read_counter("l3_hits")
-            #     / self.metric_functions("L3 requests")
-            # )
-            # * 100,
+            "L2 requests": lambda: self.ECInst.read_counter("l2_hits")
+            + self.ECInst.read_counter("l2_misses"),
+            "L2 hits": lambda: self.ECInst.read_counter("l2_hits"),
+            "L2 misses": lambda: self.ECInst.read_counter("l2_misses"),
+            "L2 hit rate": lambda: (
+                self.ECInst.read_counter("l2_hits")
+                / self.metric_functions("L2 requests")
+            )
+            * 100,
+            "L3 requests": lambda: self.ECInst.read_counter("l3_hits")
+            + self.ECInst.read_counter("l3_misses"),
+            "L3 hits": lambda: self.ECInst.read_counter("l3_hits"),
+            "L3 misses": lambda: self.ECInst.read_counter("l3_misses"),
+            "L3 hit rate": lambda: (
+                self.ECInst.read_counter("l3_hits")
+                / self.metric_functions("L3 requests")
+            )
+            * 100,
         }.get(metric, lambda: None)()

@@ -190,6 +190,10 @@ class ExeFuncts:
         instr.p_dest.value = ~instr.p_sources[0].value
 
     @staticmethod
+    def exec_neg(instr):
+        instr.p_dest.value = -instr.p_sources[0].value
+
+    @staticmethod
     def exec_sll(instr):
         if instr.decoded_fields.instr_tuple[INTFields.IMMEDIATE]:
             shamt = instr.decoded_fields.immediate & 0x1F
@@ -327,6 +331,7 @@ class InstructionTable:
             'srai':   (InstrLabel.INT,    True,       1,        True,     True,     1,      ExeFuncts.exec_sra),
             'slt':    (InstrLabel.INT,    True,       2,        False,    True,     1,      ExeFuncts.exec_slt),
             'not':    (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_not),
+            'neg':    (InstrLabel.INT,    True,       1,        False,    True,     1,      ExeFuncts.exec_neg),
             'nop':    (InstrLabel.INT,    False,      0,        False,    True,     1,      ExeFuncts.exec_add),
             # FP     label               destination n_sources immediate pipelined latency computation          n_bytes
             'fmv.x.d':(InstrLabel.FP,     True,       1,        False,    True,     3,      ExeFuncts.exec_add),
@@ -359,8 +364,6 @@ class InstructionTable:
             'j':      (InstrLabel.BRANCH, False,      0,        False,    True,     1,      ExeFuncts.exec_true),
             'jal':    (InstrLabel.BRANCH, True,       0,        False,    True,     1,      ExeFuncts.exec_true),
             'jr':     (InstrLabel.JALR,   False,      1,        False,    True,     1,      ExeFuncts.exec_true),
-            # HILAR   label               destination n_sources immediate pipelined latency computation
-            'new':    (InstrLabel.HILAR,  False,      0,        False,    True,     1,      ExeFuncts.exec_nop),
             # CALLS   label               destination n_sources immediate pipelined latency computation
             'call':   (InstrLabel.CALL,   False,      8,        False,    True,     1,      ExeFuncts.exec_nop),
         }
@@ -531,21 +534,3 @@ class Magics:
     def perf_count_reset(performance_counters, instr_id):
         performance_counters.ECInst.reset_counters()
         print("Performance counters have reset with instruction id: " + str(instr_id))
-
-
-# # Not used
-
-# # List of objects that will be executed by the HILAR queue
-
-
-# class HilarObjects:
-#     objects = ['_b_node_']
-# # List of objects that will be executed by the Integer Queue
-
-
-# class IntObjects:
-#     objects = ['_array_', '_int_', '_bool_', '_byte_']
-
-
-# class HilarMethods:
-#     methods = ['insert', 'search', 'get_index', 'print_data']

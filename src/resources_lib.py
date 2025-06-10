@@ -29,7 +29,7 @@ class Resources:
             "s2l_slots", capacity=self.params.store2load_queue_slots
         )
         self.ls_ordering = sim.Resource("ls_ordering", capacity=1)
-        self.agu_resource = sim.Resource("agu_resource", capacity=1)
+        self.agu_resource = sim.Resource("agu_resource", capacity=self.params.agus)
         self.brob_resource = sim.Resource(
             "brob_resource", capacity=self.params.brob_entries
         )
