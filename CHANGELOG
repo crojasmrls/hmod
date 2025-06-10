@@ -1,0 +1,22 @@
+# Change Log
+All notable changes to this project will be documented in this file.
+ 
+The format is based on [Keep a Changelog](http://keepachangelog.com/)
+and this project adheres to [Semantic Versioning](http://semver.org/).
+ 
+## [1.0.0] - 2025-06-10
+ 
+Initial public release.
+ 
+### Added
+- Execute assembly programs
+- [RISC-V unprivileged ISA](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf) subset
+- Out-of-order parametrizable pipeline model
+- IPC counter
+- [Konata](https://github.com/shioyadan/Konata) tracer Support
+
+ 
+### Changed
+ 
+### Fixed
+ 
