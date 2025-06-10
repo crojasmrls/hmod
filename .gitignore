@@ -1,4 +1,5 @@
 konata_signature.txt
+outputs/
 *.sig
 *.idea*
 *__pycache__*
