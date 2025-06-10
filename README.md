@@ -45,7 +45,7 @@ When you have the image ready, you can create a new container using this command
 For executing a simulation, it is necessary to run the main file `read-pseudocode.py`; in this file, you can specify which parameters to use, the simulated time, and the assembly code to run.
 
 ## Key features.
-### Version 0.1(alpha)
+### v1.0.0
 - Execute assembly programs
 - [RISC-V unprivileged ISA](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf) subset
 - Out-of-order parametrizable pipeline model
