@@ -5,6 +5,7 @@ class PipelineParams:
     fetch_width = 4
     commit_width = 4
     int_alus = 4
+    agus = 2
     fp_alus = 2
     physical_registers = 256
     branch_units = 2
@@ -26,9 +27,8 @@ class PipelineParams:
     branch_predictor = "bimodal_predictor"
     bp_entries = 2048
     # Data cache parameters
-    dcache_ports = 1
-    # dcache_mshrs = 64
-    dcache_mshrs = 5
+    dcache_ports = 2
+    dcache_mshrs = 64
     # Dcache latencies
     dcache_load_hit_latency = 2
     dcache_store_hit_latency = 2
@@ -51,11 +51,11 @@ class PipelineParams:
     # speculate with load hits
     speculate_on_load_hit = True
     # HPDC blocking behaivor of loads after stores
-    HPDC_store_bubble = True
+    HPDC_store_bubble = False
     # speculation wit OoO loads that does not have all the previus stores calculated
     speculate_on_younger_loads = True
     # Store data dependency before AGU calculation
-    store_data_dependencies = True
+    store_data_dependencies = False
 
 
 class MemoryMap:
